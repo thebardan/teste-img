@@ -11,6 +11,7 @@ const envSchema = z.object({
   MINIO_USE_SSL: z.coerce.boolean().default(false),
   GEMINI_API_KEY: z.string().optional(),
   API_SECRET: z.string().optional(),
+  NEXTAUTH_URL: z.string().url().default('http://localhost:3000'),
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 })
