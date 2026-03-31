@@ -1,0 +1,411 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identity ────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+  APPROVER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  image     String?
+  role      UserRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salesSheets   SalesSheet[]
+  presentations Presentation[]
+  approvals     Approval[]
+  auditLogs     AuditLog[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  segment   String?
+  channel   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  presentations Presentation[]
+}
+
+// ─── Product Catalog ─────────────────────────────────────────────────────────
+
+model Product {
+  id            String  @id @default(cuid())
+  sku           String  @unique
+  name          String
+  brand         String
+  category      String
+  subcategory   String?
+  description   String
+  qrDestination String?
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  images         ProductImage[]
+  specifications ProductSpecification[]
+  benefits       ProductBenefit[]
+  claims         ProductClaim[]
+  packaging      ProductPackaging?
+  links          ProductLink[]
+  variants       ProductVariant[]
+  salesSheets    SalesSheet[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  altText   String?
+  isPrimary Boolean @default(false)
+  order     Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductSpecification {
+  id        String  @id @default(cuid())
+  productId String
+  key       String
+  value     String
+  unit      String?
+  group     String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductBenefit {
+  id        String @id @default(cuid())
+  productId String
+  text      String
+  order     Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductClaim {
+  id         String  @id @default(cuid())
+  productId  String
+  text       String
+  isVerified Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductPackaging {
+  id          String  @id @default(cuid())
+  productId   String  @unique
+  weightKg    Float?
+  widthCm     Float?
+  heightCm    Float?
+  depthCm     Float?
+  unitsPerBox Int?
+  eanCode     String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductLink {
+  id        String @id @default(cuid())
+  productId String
+  label     String
+  url       String
+  type      String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  sku       String  @unique
+  name      String
+  color     String?
+  size      String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─── Brand Assets ─────────────────────────────────────────────────────────────
+
+enum BrandAssetType {
+  LOGO
+  ICON
+  PATTERN
+  COLOR_SWATCH
+}
+
+enum BackgroundType {
+  DARK
+  LIGHT
+  COLORED
+  ANY
+}
+
+model BrandAsset {
+  id          String         @id @default(cuid())
+  name        String
+  type        BrandAssetType
+  url         String
+  format      String
+  bestOn      BackgroundType
+  description String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  rules BrandRule[]
+}
+
+model BrandRule {
+  id           String @id @default(cuid())
+  brandAssetId String
+  condition    String
+  score        Int
+  notes        String?
+
+  asset BrandAsset @relation(fields: [brandAssetId], references: [id], onDelete: Cascade)
+}
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+
+enum TemplateType {
+  SALES_SHEET_HORIZONTAL
+  SALES_SHEET_VERTICAL
+  SALES_SHEET_A4
+  DECK_CORPORATE
+  DECK_RETAIL
+  DECK_PREMIUM
+  DECK_DISTRIBUTOR
+}
+
+model Template {
+  id          String       @id @default(cuid())
+  name        String
+  type        TemplateType
+  description String?
+  zonesConfig Json
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  variants      TemplateVariant[]
+  salesSheets   SalesSheet[]
+  presentations Presentation[]
+}
+
+model TemplateVariant {
+  id          String @id @default(cuid())
+  templateId  String
+  name        String
+  zonesConfig Json
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+// ─── Sales Sheets ─────────────────────────────────────────────────────────────
+
+enum ApprovalStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model SalesSheet {
+  id         String         @id @default(cuid())
+  title      String
+  status     ApprovalStatus @default(DRAFT)
+  productId  String
+  templateId String
+  authorId   String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  product  Product  @relation(fields: [productId], references: [id])
+  template Template @relation(fields: [templateId], references: [id])
+  author   User     @relation(fields: [authorId], references: [id])
+
+  versions  SalesSheetVersion[]
+  approvals Approval[]
+}
+
+model SalesSheetVersion {
+  id            String   @id @default(cuid())
+  salesSheetId  String
+  versionNumber Int
+  content       Json
+  createdAt     DateTime @default(now())
+
+  salesSheet    SalesSheet         @relation(fields: [salesSheetId], references: [id], onDelete: Cascade)
+  artifacts     ExportedArtifact[]
+  inferenceLogs InferenceLog[]
+}
+
+// ─── Presentations ───────────────────────────────────────────────────────────
+
+model Presentation {
+  id         String         @id @default(cuid())
+  title      String
+  status     ApprovalStatus @default(DRAFT)
+  clientId   String?
+  templateId String
+  authorId   String
+  focus      String?
+  channel    String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  client   Client?  @relation(fields: [clientId], references: [id])
+  template Template @relation(fields: [templateId], references: [id])
+  author   User     @relation(fields: [authorId], references: [id])
+
+  versions  PresentationVersion[]
+  approvals Approval[]
+}
+
+model PresentationVersion {
+  id             String   @id @default(cuid())
+  presentationId String
+  versionNumber  Int
+  createdAt      DateTime @default(now())
+
+  presentation  Presentation       @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  slides        PresentationSlide[]
+  artifacts     ExportedArtifact[]
+  inferenceLogs InferenceLog[]
+}
+
+model PresentationSlide {
+  id        String @id @default(cuid())
+  versionId String
+  order     Int
+  content   Json
+
+  version PresentationVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+// ─── Generation Jobs ──────────────────────────────────────────────────────────
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model GenerationJob {
+  id          String    @id @default(cuid())
+  type        String
+  status      JobStatus @default(PENDING)
+  entityId    String
+  entityType  String
+  payload     Json
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ─── AI Inference Logs ────────────────────────────────────────────────────────
+
+model PromptTemplate {
+  id        String   @id @default(cuid())
+  promptId  String
+  version   String
+  template  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model InferenceLog {
+  id                    String   @id @default(cuid())
+  promptId              String
+  promptVersion         String
+  provider              String
+  renderedPrompt        String
+  rawResponse           String
+  parsedOutput          Json?
+  durationMs            Int?
+  success               Boolean
+  error                 String?
+  salesSheetVersionId   String?
+  presentationVersionId String?
+  createdAt             DateTime @default(now())
+
+  salesSheetVersion   SalesSheetVersion?   @relation(fields: [salesSheetVersionId], references: [id])
+  presentationVersion PresentationVersion? @relation(fields: [presentationVersionId], references: [id])
+}
+
+// ─── Export Artifacts ─────────────────────────────────────────────────────────
+
+enum ArtifactType {
+  PNG
+  JPEG
+  PDF
+  PPTX
+}
+
+model ExportedArtifact {
+  id                    String       @id @default(cuid())
+  type                  ArtifactType
+  storageKey            String
+  sizeBytes             Int?
+  filename              String
+  salesSheetVersionId   String?
+  presentationVersionId String?
+  createdAt             DateTime     @default(now())
+
+  salesSheetVersion   SalesSheetVersion?   @relation(fields: [salesSheetVersionId], references: [id])
+  presentationVersion PresentationVersion? @relation(fields: [presentationVersionId], references: [id])
+}
+
+// ─── Approvals ────────────────────────────────────────────────────────────────
+
+model Approval {
+  id             String         @id @default(cuid())
+  salesSheetId   String?
+  presentationId String?
+  approverId     String
+  status         ApprovalStatus
+  comment        String?
+  createdAt      DateTime       @default(now())
+
+  salesSheet   SalesSheet?   @relation(fields: [salesSheetId], references: [id])
+  presentation Presentation? @relation(fields: [presentationId], references: [id])
+  approver     User          @relation(fields: [approverId], references: [id])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
