@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { validateEnv } from './config/env'
 import { DatabaseModule } from './database/database.module'
+import { QueueModule } from './queue/queue.module'
+import { StorageModule } from './storage/storage.module'
+import { HealthModule } from './health/health.module'
 
 @Module({
   imports: [
@@ -11,6 +14,9 @@ import { DatabaseModule } from './database/database.module'
       ignoreEnvFile: false,
     }),
     DatabaseModule,
+    QueueModule,
+    StorageModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

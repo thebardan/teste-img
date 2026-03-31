@@ -11,12 +11,15 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/terminus": "^10.0.0",
     "@prisma/client": "^5.22.0",
+    "bullmq": "^5.71.1",
+    "minio": "^8.0.7",
     "prisma": "^5.22.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
