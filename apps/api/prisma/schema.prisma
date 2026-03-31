@@ -78,6 +78,8 @@ model ProductImage {
   order     Int     @default(0)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductSpecification {
@@ -89,6 +91,8 @@ model ProductSpecification {
   group     String?
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductBenefit {
@@ -98,6 +102,8 @@ model ProductBenefit {
   order     Int    @default(0)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductClaim {
@@ -107,6 +113,8 @@ model ProductClaim {
   isVerified Boolean @default(false)
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductPackaging {
@@ -130,6 +138,8 @@ model ProductLink {
   type      String
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductVariant {
@@ -141,6 +151,8 @@ model ProductVariant {
   size      String?
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 // ─── Brand Assets ─────────────────────────────────────────────────────────────
@@ -182,6 +194,8 @@ model BrandRule {
   notes        String?
 
   asset BrandAsset @relation(fields: [brandAssetId], references: [id], onDelete: Cascade)
+
+  @@index([brandAssetId])
 }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
@@ -218,6 +232,8 @@ model TemplateVariant {
   zonesConfig Json
 
   template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
 }
 
 // ─── Sales Sheets ─────────────────────────────────────────────────────────────
@@ -246,6 +262,10 @@ model SalesSheet {
 
   versions  SalesSheetVersion[]
   approvals Approval[]
+
+  @@index([productId])
+  @@index([templateId])
+  @@index([authorId])
 }
 
 model SalesSheetVersion {
@@ -258,6 +278,8 @@ model SalesSheetVersion {
   salesSheet    SalesSheet         @relation(fields: [salesSheetId], references: [id], onDelete: Cascade)
   artifacts     ExportedArtifact[]
   inferenceLogs InferenceLog[]
+
+  @@index([salesSheetId])
 }
 
 // ─── Presentations ───────────────────────────────────────────────────────────
@@ -280,6 +302,10 @@ model Presentation {
 
   versions  PresentationVersion[]
   approvals Approval[]
+
+  @@index([clientId])
+  @@index([templateId])
+  @@index([authorId])
 }
 
 model PresentationVersion {
@@ -292,6 +318,8 @@ model PresentationVersion {
   slides        PresentationSlide[]
   artifacts     ExportedArtifact[]
   inferenceLogs InferenceLog[]
+
+  @@index([presentationId])
 }
 
 model PresentationSlide {
@@ -301,6 +329,8 @@ model PresentationSlide {
   content   Json
 
   version PresentationVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
 }
 
 // ─── Generation Jobs ──────────────────────────────────────────────────────────
@@ -325,6 +355,9 @@ model GenerationJob {
   completedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([entityType, entityId])
 }
 
 // ─── AI Inference Logs ────────────────────────────────────────────────────────
@@ -355,6 +388,9 @@ model InferenceLog {
 
   salesSheetVersion   SalesSheetVersion?   @relation(fields: [salesSheetVersionId], references: [id])
   presentationVersion PresentationVersion? @relation(fields: [presentationVersionId], references: [id])
+
+  @@index([salesSheetVersionId])
+  @@index([presentationVersionId])
 }
 
 // ─── Export Artifacts ─────────────────────────────────────────────────────────
@@ -378,6 +414,9 @@ model ExportedArtifact {
 
   salesSheetVersion   SalesSheetVersion?   @relation(fields: [salesSheetVersionId], references: [id])
   presentationVersion PresentationVersion? @relation(fields: [presentationVersionId], references: [id])
+
+  @@index([salesSheetVersionId])
+  @@index([presentationVersionId])
 }
 
 // ─── Approvals ────────────────────────────────────────────────────────────────
@@ -394,6 +433,10 @@ model Approval {
   salesSheet   SalesSheet?   @relation(fields: [salesSheetId], references: [id])
   presentation Presentation? @relation(fields: [presentationId], references: [id])
   approver     User          @relation(fields: [approverId], references: [id])
+
+  @@index([salesSheetId])
+  @@index([presentationId])
+  @@index([approverId])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
@@ -408,4 +451,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
 }
