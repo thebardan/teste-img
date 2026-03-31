@@ -6,3 +6,6 @@ dist/
 *.log
 .turbo/
 .superpowers/
+coverage/
+*.tsbuildinfo
+.DS_Store
