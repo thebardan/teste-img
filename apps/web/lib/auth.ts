@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
+import CredentialsProvider from 'next-auth/providers/credentials'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 const API_SECRET = process.env.API_SECRET ?? ''
@@ -29,9 +30,26 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID ?? 'dev',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'dev',
     }),
+    ...(process.env.NODE_ENV === 'development'
+      ? [
+          CredentialsProvider({
+            id: 'dev-test',
+            name: 'Dev User',
+            credentials: {},
+            async authorize() {
+              return {
+                id: 'dev-user-1',
+                name: 'Dev User',
+                email: 'dev@multilaser.com.br',
+                image: null,
+              }
+            },
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     async jwt({ token, user }) {
