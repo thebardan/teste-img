@@ -4,9 +4,9 @@ import { ConfigService } from '@nestjs/config'
 import type { Env } from '../config/env'
 import { QueueController } from './queue.controller'
 import { QueueService } from './queue.service'
+import { QUEUE_GENERATION, QUEUE_EXPORT, QUEUE_DRIVE_SYNC } from './queue.constants'
 
-export const QUEUE_GENERATION = 'generation'
-export const QUEUE_EXPORT = 'export'
+export { QUEUE_GENERATION, QUEUE_EXPORT, QUEUE_DRIVE_SYNC }
 
 /** Default job options applied to every queue */
 export const DEFAULT_JOB_OPTIONS = {
@@ -31,6 +31,7 @@ export const DEFAULT_JOB_OPTIONS = {
     BullModule.registerQueue(
       { name: QUEUE_GENERATION },
       { name: QUEUE_EXPORT },
+      { name: QUEUE_DRIVE_SYNC },
     ),
   ],
   controllers: [QueueController],

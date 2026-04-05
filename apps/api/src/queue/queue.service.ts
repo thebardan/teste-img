@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectQueue } from '@nestjs/bullmq'
 import type { Queue } from 'bullmq'
-import { QUEUE_GENERATION, QUEUE_EXPORT } from './queue.module'
+import { QUEUE_GENERATION, QUEUE_EXPORT, QUEUE_DRIVE_SYNC } from './queue.constants'
 
 export interface QueueStats {
   name: string
@@ -18,12 +18,21 @@ export class QueueService {
   constructor(
     @InjectQueue(QUEUE_GENERATION) private generationQueue: Queue,
     @InjectQueue(QUEUE_EXPORT) private exportQueue: Queue,
+    @InjectQueue(QUEUE_DRIVE_SYNC) private driveSyncQueue: Queue,
   ) {}
+
+  private getQueue(name: string): Queue {
+    if (name === QUEUE_GENERATION) return this.generationQueue
+    if (name === QUEUE_EXPORT) return this.exportQueue
+    if (name === QUEUE_DRIVE_SYNC) return this.driveSyncQueue
+    return this.generationQueue
+  }
 
   async getStats(): Promise<QueueStats[]> {
     const queues = [
       { name: QUEUE_GENERATION, queue: this.generationQueue },
       { name: QUEUE_EXPORT, queue: this.exportQueue },
+      { name: QUEUE_DRIVE_SYNC, queue: this.driveSyncQueue },
     ]
 
     return Promise.all(
@@ -42,8 +51,7 @@ export class QueueService {
   }
 
   async getFailedJobs(queueName: string, start = 0, end = 20) {
-    const queue =
-      queueName === QUEUE_GENERATION ? this.generationQueue : this.exportQueue
+    const queue = this.getQueue(queueName)
     const jobs = await queue.getFailed(start, end)
     return jobs.map((j) => ({
       id: j.id,
@@ -56,8 +64,7 @@ export class QueueService {
   }
 
   async retryFailed(queueName: string, jobId: string) {
-    const queue =
-      queueName === QUEUE_GENERATION ? this.generationQueue : this.exportQueue
+    const queue = this.getQueue(queueName)
     const job = await queue.getJob(jobId)
     if (!job) throw new Error(`Job ${jobId} not found in queue ${queueName}`)
     await job.retry()
