@@ -6,6 +6,7 @@ import { QueueModule } from './queue/queue.module'
 import { StorageModule } from './storage/storage.module'
 import { HealthModule } from './health/health.module'
 import { ProductsModule } from './products/products.module'
+import { BrandAssetsModule } from './brand-assets/brand-assets.module'
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ProductsModule } from './products/products.module'
     StorageModule,
     HealthModule,
     ProductsModule,
+    BrandAssetsModule,
   ],
 })
 export class AppModule {}
