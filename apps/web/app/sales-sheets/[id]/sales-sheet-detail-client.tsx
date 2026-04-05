@@ -7,12 +7,27 @@ import {
   useSalesSheetArtifacts,
   useArtifactDownload,
 } from '@/lib/hooks/use-exports'
+import {
+  useSubmitSalesSheet,
+  useApproveSalesSheet,
+  useRejectSalesSheet,
+  useArchiveSalesSheet,
+  useSalesSheetApprovals,
+} from '@/lib/hooks/use-approvals'
+import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
 import { ArrowLeft, Layers, Sparkles, Palette, Download, FileText, Loader2 } from 'lucide-react'
 
 export function SalesSheetDetailClient({ id }: { id: string }) {
   const { data: sheet, isLoading } = useSalesSheet(id)
   const { data: artifacts, refetch: refetchArtifacts } = useSalesSheetArtifacts(id)
   const { mutateAsync: exportPdf, isPending: exportingPdf } = useExportSalesSheetPdf()
+  const { data: approvalHistory } = useSalesSheetApprovals(id)
+  const { mutateAsync: submitMut,  isPending: submitting  } = useSubmitSalesSheet()
+  const { mutateAsync: approveMut, isPending: approving   } = useApproveSalesSheet()
+  const { mutateAsync: rejectMut,  isPending: rejecting   } = useRejectSalesSheet()
+  const { mutateAsync: archiveMut, isPending: archiving   } = useArchiveSalesSheet()
+
+  const approvalBusy = submitting || approving || rejecting || archiving
 
   async function handleExportPdf() {
     const result = await exportPdf(id)
@@ -45,7 +60,19 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
             {sheet.product?.name} · {sheet.template?.name} · {sheet.author?.name}
           </p>
         </div>
-        <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{sheet.status}</span>
+      </div>
+
+      {/* Status + Approvals */}
+      <div className="mb-6">
+        <StatusActionsPanel
+          currentStatus={sheet.status as any}
+          history={approvalHistory}
+          onSubmit={() => submitMut({ id })}
+          onApprove={() => approveMut({ id })}
+          onReject={(comment) => rejectMut({ id, comment })}
+          onArchive={() => archiveMut({ id })}
+          isLoading={approvalBusy}
+        />
       </div>
 
       {content && (

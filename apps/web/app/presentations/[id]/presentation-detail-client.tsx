@@ -9,6 +9,14 @@ import {
   usePresentationArtifacts,
   useArtifactDownload,
 } from '@/lib/hooks/use-exports'
+import {
+  useSubmitPresentation,
+  useApprovePresentation,
+  useRejectPresentation,
+  useArchivePresentation,
+  usePresentationApprovals,
+} from '@/lib/hooks/use-approvals'
+import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
 import { ArrowLeft, Presentation, Layers, Building2, Download, FileText, MonitorPlay, Loader2 } from 'lucide-react'
 
 const SLIDE_TYPE_LABELS: Record<string, string> = {
@@ -24,7 +32,14 @@ export function PresentationDetailClient({ id }: { id: string }) {
   const { data: artifacts, refetch: refetchArtifacts } = usePresentationArtifacts(id)
   const { mutateAsync: exportPptx, isPending: exportingPptx } = useExportPresentationPptx()
   const { mutateAsync: exportPdf,  isPending: exportingPdf  } = useExportPresentationPdf()
+  const { data: approvalHistory } = usePresentationApprovals(id)
+  const { mutateAsync: submitMut,  isPending: submitting  } = useSubmitPresentation()
+  const { mutateAsync: approveMut, isPending: approving   } = useApprovePresentation()
+  const { mutateAsync: rejectMut,  isPending: rejecting   } = useRejectPresentation()
+  const { mutateAsync: archiveMut, isPending: archiving   } = useArchivePresentation()
   const [lastDownloadUrl, setLastDownloadUrl] = useState<string | null>(null)
+
+  const approvalBusy = submitting || approving || rejecting || archiving
 
   async function handleExport(type: 'pptx' | 'pdf') {
     const fn = type === 'pptx' ? exportPptx : exportPdf
@@ -126,6 +141,17 @@ export function PresentationDetailClient({ id }: { id: string }) {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Status & Approvals */}
+          <StatusActionsPanel
+            currentStatus={presentation.status as any}
+            history={approvalHistory}
+            onSubmit={() => submitMut({ id })}
+            onApprove={() => approveMut({ id })}
+            onReject={(comment) => rejectMut({ id, comment })}
+            onArchive={() => archiveMut({ id })}
+            isLoading={approvalBusy}
+          />
+
           {/* Client */}
           {presentation.client && (
             <div className="rounded-lg border border-border bg-card p-5">
@@ -191,28 +217,6 @@ export function PresentationDetailClient({ id }: { id: string }) {
             )}
           </div>
 
-          {/* Approvals */}
-          {presentation.approvals.length > 0 && (
-            <div className="rounded-lg border border-border bg-card p-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aprovações</p>
-              <div className="space-y-2">
-                {presentation.approvals.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between text-sm border-b border-border/50 py-1.5 last:border-0">
-                    <span className="text-muted-foreground text-xs">{a.approver.name}</span>
-                    <span className={`text-xs rounded-full border px-2 py-0.5 ${
-                      a.status === 'APPROVED'
-                        ? 'text-green-400 border-green-400/30'
-                        : a.status === 'REJECTED'
-                        ? 'text-red-400 border-red-400/30'
-                        : 'text-muted-foreground border-border'
-                    }`}>
-                      {a.status === 'APPROVED' ? 'Aprovado' : a.status === 'REJECTED' ? 'Rejeitado' : 'Pendente'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
