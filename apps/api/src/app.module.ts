@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module'
 import { ProductsModule } from './products/products.module'
 import { BrandAssetsModule } from './brand-assets/brand-assets.module'
 import { AiModule } from './ai/ai.module'
+import { SalesSheetsModule } from './sales-sheets/sales-sheets.module'
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AiModule } from './ai/ai.module'
     ProductsModule,
     BrandAssetsModule,
     AiModule,
+    SalesSheetsModule,
   ],
 })
 export class AppModule {}
