@@ -116,6 +116,106 @@ async function main() {
     },
   })
 
+  await prisma.template.upsert({
+    where: { id: 'tpl-sales-sheet-vertical' },
+    update: {},
+    create: {
+      id: 'tpl-sales-sheet-vertical',
+      name: 'Lâmina Vertical',
+      type: TemplateType.SALES_SHEET_VERTICAL,
+      description: 'Lâmina de vendas no formato retrato',
+      zonesConfig: {
+        imageZone: { x: 0, y: 0, width: '100%', height: '50%' },
+        headlineZone: { x: '4%', y: '52%', width: '92%', height: '12%' },
+        benefitsZone: { x: '4%', y: '66%', width: '92%', height: '20%' },
+        logoZone: { x: '4%', y: '88%', width: '18%', height: '8%' },
+        qrZone: { x: '75%', y: '86%', width: '20%', height: '11%' },
+        ctaZone: { x: '25%', y: '88%', width: '46%', height: '8%' },
+      },
+    },
+  })
+
+  await prisma.template.upsert({
+    where: { id: 'tpl-sales-sheet-a4' },
+    update: {},
+    create: {
+      id: 'tpl-sales-sheet-a4',
+      name: 'Lâmina A4',
+      type: TemplateType.SALES_SHEET_A4,
+      description: 'Lâmina de vendas no formato A4 completo, ideal para impressão',
+      zonesConfig: {
+        imageZone: { x: '4%', y: '4%', width: '42%', height: '55%' },
+        specsZone: { x: '4%', y: '62%', width: '42%', height: '30%' },
+        headlineZone: { x: '50%', y: '4%', width: '46%', height: '15%' },
+        benefitsZone: { x: '50%', y: '22%', width: '46%', height: '38%' },
+        comparativeZone: { x: '50%', y: '63%', width: '46%', height: '18%' },
+        logoZone: { x: '50%', y: '84%', width: '20%', height: '9%' },
+        qrZone: { x: '74%', y: '83%', width: '16%', height: '12%' },
+        ctaZone: { x: '50%', y: '94%', width: '46%', height: '5%' },
+      },
+    },
+  })
+
+  await prisma.template.upsert({
+    where: { id: 'tpl-deck-retail' },
+    update: {},
+    create: {
+      id: 'tpl-deck-retail',
+      name: 'Deck Varejo',
+      type: TemplateType.DECK_RETAIL,
+      description: 'Apresentação focada em canal varejo — destaque em preço e benefícios',
+      zonesConfig: {
+        heroZone: { x: 0, y: 0, width: '50%', height: '100%' },
+        titleZone: { x: '52%', y: '5%', width: '44%', height: '16%' },
+        highlightZone: { x: '52%', y: '24%', width: '44%', height: '20%' },
+        bodyZone: { x: '52%', y: '47%', width: '44%', height: '28%' },
+        logoZone: { x: '52%', y: '80%', width: '15%', height: '10%' },
+        qrZone: { x: '72%', y: '78%', width: '14%', height: '14%' },
+        footerZone: { x: 0, y: '93%', width: '100%', height: '7%' },
+      },
+    },
+  })
+
+  await prisma.template.upsert({
+    where: { id: 'tpl-deck-premium' },
+    update: {},
+    create: {
+      id: 'tpl-deck-premium',
+      name: 'Deck Premium',
+      type: TemplateType.DECK_PREMIUM,
+      description: 'Apresentação premium para clientes de alto valor — layout editorial',
+      zonesConfig: {
+        fullBleedZone: { x: 0, y: 0, width: '100%', height: '40%' },
+        titleZone: { x: '6%', y: '42%', width: '88%', height: '14%' },
+        taglineZone: { x: '6%', y: '58%', width: '88%', height: '8%' },
+        bodyZone: { x: '6%', y: '68%', width: '55%', height: '18%' },
+        sidebarZone: { x: '65%', y: '68%', width: '29%', height: '18%' },
+        logoZone: { x: '6%', y: '89%', width: '16%', height: '8%' },
+        footerZone: { x: 0, y: '95%', width: '100%', height: '5%' },
+      },
+    },
+  })
+
+  await prisma.template.upsert({
+    where: { id: 'tpl-deck-distributor' },
+    update: {},
+    create: {
+      id: 'tpl-deck-distributor',
+      name: 'Deck Distribuidor',
+      type: TemplateType.DECK_DISTRIBUTOR,
+      description: 'Apresentação para canal distribuição — foco em mix, giro e margem',
+      zonesConfig: {
+        headerZone: { x: 0, y: 0, width: '100%', height: '15%' },
+        titleZone: { x: '4%', y: '17%', width: '92%', height: '12%' },
+        col1Zone: { x: '4%', y: '32%', width: '28%', height: '50%' },
+        col2Zone: { x: '36%', y: '32%', width: '28%', height: '50%' },
+        col3Zone: { x: '68%', y: '32%', width: '28%', height: '50%' },
+        logoZone: { x: '4%', y: '85%', width: '16%', height: '10%' },
+        footerZone: { x: 0, y: '93%', width: '100%', height: '7%' },
+      },
+    },
+  })
+
   // ─── Products ─────────────────────────────────────────────────────────────
   const products = [
     {
@@ -237,7 +337,7 @@ async function main() {
   }
 
   console.log('✅ Seed completed.')
-  console.log(`   Users: 2 | Clients: 4 | Products: ${products.length} | Brand Assets: 2 | Templates: 2`)
+  console.log(`   Users: 2 | Clients: 4 | Products: ${products.length} | Brand Assets: 2 | Templates: 7`)
 }
 
 main()

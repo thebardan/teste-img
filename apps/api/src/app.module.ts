@@ -11,6 +11,7 @@ import { AiModule } from './ai/ai.module'
 import { SalesSheetsModule } from './sales-sheets/sales-sheets.module'
 import { PresentationsModule } from './presentations/presentations.module'
 import { ClientsModule } from './clients/clients.module'
+import { TemplatesModule } from './templates/templates.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ClientsModule } from './clients/clients.module'
     SalesSheetsModule,
     PresentationsModule,
     ClientsModule,
+    TemplatesModule,
   ],
 })
 export class AppModule {}
