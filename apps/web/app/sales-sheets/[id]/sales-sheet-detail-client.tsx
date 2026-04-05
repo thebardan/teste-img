@@ -2,10 +2,23 @@
 
 import Link from 'next/link'
 import { useSalesSheet } from '@/lib/hooks/use-sales-sheets'
-import { ArrowLeft, Layers, Sparkles, Palette } from 'lucide-react'
+import {
+  useExportSalesSheetPdf,
+  useSalesSheetArtifacts,
+  useArtifactDownload,
+} from '@/lib/hooks/use-exports'
+import { ArrowLeft, Layers, Sparkles, Palette, Download, FileText, Loader2 } from 'lucide-react'
 
 export function SalesSheetDetailClient({ id }: { id: string }) {
   const { data: sheet, isLoading } = useSalesSheet(id)
+  const { data: artifacts, refetch: refetchArtifacts } = useSalesSheetArtifacts(id)
+  const { mutateAsync: exportPdf, isPending: exportingPdf } = useExportSalesSheetPdf()
+
+  async function handleExportPdf() {
+    const result = await exportPdf(id)
+    refetchArtifacts()
+    window.open(result.downloadUrl, '_blank')
+  }
 
   if (isLoading) return (
     <div className="p-8 space-y-4 animate-pulse">
@@ -134,8 +147,59 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               </div>
             </div>
           )}
+
+          {/* Export */}
+          <div className="rounded-lg border border-border bg-card p-6">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Download className="h-3.5 w-3.5" /> Exportar
+            </div>
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              className="w-full flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/20 disabled:opacity-50 transition-colors"
+            >
+              {exportingPdf
+                ? <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                : <FileText className="h-4 w-4 shrink-0 text-rose-400" />
+              }
+              <span>Gerar PDF</span>
+            </button>
+
+            {artifacts && artifacts.length > 0 && (
+              <div className="mt-4 border-t border-border/50 pt-3 space-y-1.5">
+                <p className="text-xs text-muted-foreground mb-2">Exports anteriores</p>
+                {artifacts.map((a) => (
+                  <SalesSheetArtifactRow key={a.id} artifact={a} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
+  )
+}
+
+function SalesSheetArtifactRow({ artifact }: { artifact: import('@/lib/hooks/use-exports').ExportedArtifact }) {
+  const { mutateAsync: getDownload, isPending } = useArtifactDownload()
+
+  async function download() {
+    const result = await getDownload(artifact.id)
+    if (result?.downloadUrl) window.open(result.downloadUrl, '_blank')
+  }
+
+  const sizeKb = artifact.sizeBytes ? Math.round(artifact.sizeBytes / 1024) : null
+
+  return (
+    <button
+      onClick={download}
+      disabled={isPending}
+      className="w-full flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+    >
+      <FileText className="h-3 w-3 shrink-0 text-rose-400" />
+      <span className="flex-1 truncate text-left">{artifact.filename}</span>
+      {sizeKb && <span>{sizeKb}kb</span>}
+      <Download className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
   )
 }
