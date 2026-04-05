@@ -14,6 +14,23 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.string().url().default('http://localhost:3000'),
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  // Google Drive
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
+  GOOGLE_SERVICE_ACCOUNT_KEY: z.string().optional(),
+  GOOGLE_DRIVE_ROOT_FOLDER_ID: z.string().optional(),
+
+  // Drive Sync
+  DRIVE_SYNC_CRON: z.string().default('0 3 * * *'),
+  DRIVE_SYNC_MATCH_THRESHOLD: z.coerce.number().default(0.75),
+
+  // Embeddings
+  EMBEDDING_MODEL: z.string().default('gemini-embedding-2-preview'),
+  EMBEDDING_DIMENSIONS: z.coerce.number().default(256),
+
+  // Art Composition
+  ART_MODEL: z.string().default('gemini-3.1-flash-image-preview'),
+  ART_DEFAULT_RESOLUTION: z.string().default('2K'),
 })
 
 export type Env = z.infer<typeof envSchema>
