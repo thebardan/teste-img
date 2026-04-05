@@ -78,3 +78,7 @@ ALTER TABLE "DriveFolder" ADD CONSTRAINT "DriveFolder_productId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "DriveImage" ADD CONSTRAINT "DriveImage_driveFolderId_fkey" FOREIGN KEY ("driveFolderId") REFERENCES "DriveFolder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- CreateIndex (HNSW vector indexes — added manually, Prisma cannot declare these via Unsupported type)
+CREATE INDEX "Product_embedding_idx" ON "Product" USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX "DriveFolder_embedding_idx" ON "DriveFolder" USING hnsw (embedding vector_cosine_ops);
