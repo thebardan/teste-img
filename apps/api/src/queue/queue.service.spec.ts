@@ -18,17 +18,19 @@ describe('QueueService', () => {
   let service: QueueService
   let generationQueue: ReturnType<typeof makeQueue>
   let exportQueue: ReturnType<typeof makeQueue>
+  let driveSyncQueue: ReturnType<typeof makeQueue>
 
   beforeEach(() => {
     generationQueue = makeQueue()
     exportQueue = makeQueue({ getCompletedCount: jest.fn().mockResolvedValue(5) })
-    service = new QueueService(generationQueue as any, exportQueue as any)
+    driveSyncQueue = makeQueue()
+    service = new QueueService(generationQueue as any, exportQueue as any, driveSyncQueue as any)
   })
 
   describe('getStats', () => {
     it('returns stats for both queues', async () => {
       const stats = await service.getStats()
-      expect(stats).toHaveLength(2)
+      expect(stats).toHaveLength(3)
       expect(stats[0].name).toBe('generation')
       expect(stats[1].name).toBe('export')
       expect(stats[0].completed).toBe(10)

@@ -6,6 +6,7 @@ import { SalesCopywriterAgent } from './agents/sales-copywriter.agent'
 import { BrandGuardianAgent } from './agents/brand-guardian.agent'
 import { VisualDirectorAgent } from './agents/visual-director.agent'
 import { QAAgent } from './agents/qa.agent'
+import { GeminiArtProvider } from './providers/gemini/gemini-art.provider'
 import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
 
 @Module({
@@ -13,6 +14,7 @@ import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
   providers: [
     GeminiTextProvider,
     GeminiImageProvider,
+    GeminiArtProvider,
     PromptEngineService,
     SalesCopywriterAgent,
     BrandGuardianAgent,
@@ -22,6 +24,7 @@ import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
   exports: [
     GeminiTextProvider,
     GeminiImageProvider,
+    GeminiArtProvider,
     PromptEngineService,
     SalesCopywriterAgent,
     BrandGuardianAgent,

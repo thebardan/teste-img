@@ -15,6 +15,7 @@ import { TemplatesModule } from './templates/templates.module'
 import { ExportsModule } from './exports/exports.module'
 import { ApprovalsModule } from './approvals/approvals.module'
 import { QAModule } from './qa/qa.module'
+import { DriveSyncModule } from './drive-sync/drive-sync.module'
 import { AuthModule } from './auth/auth.module'
 import { UsersModule } from './users/users.module'
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
@@ -42,6 +43,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
     ExportsModule,
     ApprovalsModule,
     QAModule,
+    DriveSyncModule,
   ],
 })
 export class AppModule implements NestModule {
