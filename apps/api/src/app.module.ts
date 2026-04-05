@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { validateEnv } from './config/env'
 import { DatabaseModule } from './database/database.module'
@@ -15,6 +15,9 @@ import { TemplatesModule } from './templates/templates.module'
 import { ExportsModule } from './exports/exports.module'
 import { ApprovalsModule } from './approvals/approvals.module'
 import { QAModule } from './qa/qa.module'
+import { AuthModule } from './auth/auth.module'
+import { UsersModule } from './users/users.module'
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
 
 @Module({
   imports: [
@@ -23,6 +26,8 @@ import { QAModule } from './qa/qa.module'
       validate: validateEnv,
       ignoreEnvFile: false,
     }),
+    AuthModule,
+    UsersModule,
     DatabaseModule,
     QueueModule,
     StorageModule,
@@ -39,4 +44,8 @@ import { QAModule } from './qa/qa.module'
     QAModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes('*')
+  }
+}

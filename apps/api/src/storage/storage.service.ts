@@ -1,7 +1,32 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common'
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  BadRequestException,
+  PayloadTooLargeException,
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as Minio from 'minio'
 import type { Env } from '../config/env'
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+])
+
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-powerpoint',
+])
+
+const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB
+const MAX_DOCUMENT_SIZE_BYTES = 100 * 1024 * 1024 // 100 MB
+
+export type UploadCategory = 'image' | 'document' | 'any'
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -35,7 +60,45 @@ export class StorageService implements OnModuleInit {
     }
   }
 
-  async upload(key: string, buffer: Buffer, contentType: string): Promise<string> {
+  /**
+   * Validate file before upload.
+   * @param buffer - File buffer
+   * @param contentType - MIME type declared by the caller
+   * @param category - Which allow-list to check ('image' | 'document' | 'any')
+   */
+  validateUpload(buffer: Buffer, contentType: string, category: UploadCategory = 'any') {
+    if (category === 'image') {
+      if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+        throw new BadRequestException(
+          `Unsupported image type: ${contentType}. Allowed: ${[...ALLOWED_IMAGE_TYPES].join(', ')}`,
+        )
+      }
+      if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+        throw new PayloadTooLargeException(
+          `Image exceeds max size of ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024} MB`,
+        )
+      }
+    } else if (category === 'document') {
+      if (!ALLOWED_DOCUMENT_TYPES.has(contentType)) {
+        throw new BadRequestException(
+          `Unsupported document type: ${contentType}. Allowed: ${[...ALLOWED_DOCUMENT_TYPES].join(', ')}`,
+        )
+      }
+      if (buffer.length > MAX_DOCUMENT_SIZE_BYTES) {
+        throw new PayloadTooLargeException(
+          `Document exceeds max size of ${MAX_DOCUMENT_SIZE_BYTES / 1024 / 1024} MB`,
+        )
+      }
+    }
+  }
+
+  async upload(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+    category: UploadCategory = 'any',
+  ): Promise<string> {
+    this.validateUpload(buffer, contentType, category)
     await this.client.putObject(this.bucket, key, buffer, buffer.length, {
       'Content-Type': contentType,
     })
