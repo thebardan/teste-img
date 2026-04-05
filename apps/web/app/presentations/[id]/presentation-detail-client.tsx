@@ -17,6 +17,8 @@ import {
   usePresentationApprovals,
 } from '@/lib/hooks/use-approvals'
 import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
+import { QAPanel } from '@/components/qa/qa-panel'
+import { useQAPresentation } from '@/lib/hooks/use-qa'
 import { ArrowLeft, Presentation, Layers, Building2, Download, FileText, MonitorPlay, Loader2 } from 'lucide-react'
 
 const SLIDE_TYPE_LABELS: Record<string, string> = {
@@ -40,6 +42,7 @@ export function PresentationDetailClient({ id }: { id: string }) {
   const [lastDownloadUrl, setLastDownloadUrl] = useState<string | null>(null)
 
   const approvalBusy = submitting || approving || rejecting || archiving
+  const { mutateAsync: runQA, isPending: runningQA } = useQAPresentation()
 
   async function handleExport(type: 'pptx' | 'pdf') {
     const fn = type === 'pptx' ? exportPptx : exportPdf
@@ -141,6 +144,9 @@ export function PresentationDetailClient({ id }: { id: string }) {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* QA */}
+          <QAPanel onRun={() => runQA(id)} isRunning={runningQA} />
+
           {/* Status & Approvals */}
           <StatusActionsPanel
             currentStatus={presentation.status as any}

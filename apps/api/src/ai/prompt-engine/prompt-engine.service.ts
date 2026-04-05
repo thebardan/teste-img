@@ -197,4 +197,22 @@ Contexto: {{context}}
 Gere copy refinado mantendo o título mas enriquecendo o conteúdo.
 Responda APENAS com JSON:
 {"title": "...", "subtitle": "...", "body": ["...", "..."]}`,
+
+  'qa-check': `Você é um especialista em QA de materiais comerciais da Multilaser.
+Analise o conteúdo abaixo e identifique problemas de qualidade.
+
+Tipo: {{type}}
+Assunto: {{subject}}
+Conteúdo:
+{{content}}
+
+Verifique:
+- Ortografia e gramática em português
+- Claims exagerados ou não verificáveis
+- Tom inconsistente com branding profissional
+- Texto confuso ou pouco persuasivo
+- Inconsistências entre título e conteúdo
+
+Responda APENAS com JSON (array vazio se não houver problemas):
+{"issues": ["descrição do problema 1", "descrição do problema 2"]}`,
 }

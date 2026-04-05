@@ -15,6 +15,8 @@ import {
   useSalesSheetApprovals,
 } from '@/lib/hooks/use-approvals'
 import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
+import { QAPanel } from '@/components/qa/qa-panel'
+import { useQASalesSheet } from '@/lib/hooks/use-qa'
 import { ArrowLeft, Layers, Sparkles, Palette, Download, FileText, Loader2 } from 'lucide-react'
 
 export function SalesSheetDetailClient({ id }: { id: string }) {
@@ -28,6 +30,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const { mutateAsync: archiveMut, isPending: archiving   } = useArchiveSalesSheet()
 
   const approvalBusy = submitting || approving || rejecting || archiving
+  const { mutateAsync: runQA, isPending: runningQA } = useQASalesSheet()
 
   async function handleExportPdf() {
     const result = await exportPdf(id)
@@ -62,8 +65,9 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Status + Approvals */}
-      <div className="mb-6">
+      {/* QA + Status */}
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <QAPanel onRun={() => runQA(id)} isRunning={runningQA} />
         <StatusActionsPanel
           currentStatus={sheet.status as any}
           history={approvalHistory}
@@ -74,6 +78,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           isLoading={approvalBusy}
         />
       </div>
+
 
       {content && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

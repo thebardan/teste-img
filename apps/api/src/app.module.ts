@@ -14,6 +14,7 @@ import { ClientsModule } from './clients/clients.module'
 import { TemplatesModule } from './templates/templates.module'
 import { ExportsModule } from './exports/exports.module'
 import { ApprovalsModule } from './approvals/approvals.module'
+import { QAModule } from './qa/qa.module'
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ApprovalsModule } from './approvals/approvals.module'
     TemplatesModule,
     ExportsModule,
     ApprovalsModule,
+    QAModule,
   ],
 })
 export class AppModule {}

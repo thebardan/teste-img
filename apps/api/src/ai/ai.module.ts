@@ -5,6 +5,7 @@ import { PromptEngineService } from './prompt-engine/prompt-engine.service'
 import { SalesCopywriterAgent } from './agents/sales-copywriter.agent'
 import { BrandGuardianAgent } from './agents/brand-guardian.agent'
 import { VisualDirectorAgent } from './agents/visual-director.agent'
+import { QAAgent } from './agents/qa.agent'
 import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
 
 @Module({
@@ -16,6 +17,7 @@ import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
     SalesCopywriterAgent,
     BrandGuardianAgent,
     VisualDirectorAgent,
+    QAAgent,
   ],
   exports: [
     GeminiTextProvider,
@@ -24,6 +26,7 @@ import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
     SalesCopywriterAgent,
     BrandGuardianAgent,
     VisualDirectorAgent,
+    QAAgent,
   ],
 })
 export class AiModule {}
