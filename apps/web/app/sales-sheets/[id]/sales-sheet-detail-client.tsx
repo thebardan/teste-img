@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useSalesSheet } from '@/lib/hooks/use-sales-sheets'
 import {
@@ -17,7 +18,8 @@ import {
 import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
 import { QAPanel } from '@/components/qa/qa-panel'
 import { useQASalesSheet } from '@/lib/hooks/use-qa'
-import { ArrowLeft, Layers, Sparkles, Palette, Download, FileText, Loader2 } from 'lucide-react'
+import { useGenerateArt } from '@/lib/hooks/use-art'
+import { ArrowLeft, Layers, Sparkles, Palette, Download, FileText, Loader2, Wand2, ImageIcon } from 'lucide-react'
 
 export function SalesSheetDetailClient({ id }: { id: string }) {
   const { data: sheet, isLoading } = useSalesSheet(id)
@@ -31,6 +33,8 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
   const approvalBusy = submitting || approving || rejecting || archiving
   const { mutateAsync: runQA, isPending: runningQA } = useQASalesSheet()
+  const { mutateAsync: generateArt, isPending: generatingArt, data: artResult } = useGenerateArt()
+  const [artPrompt, setArtPrompt] = useState('')
 
   async function handleExportPdf() {
     const result = await exportPdf(id)
@@ -179,6 +183,46 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               </div>
             </div>
           )}
+
+          {/* Art Generation */}
+          <div className="col-span-1 lg:col-span-2 rounded-lg border border-border bg-card p-6">
+            <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Wand2 className="h-3.5 w-3.5" /> Arte Final (Gemini)
+            </div>
+            {(artResult?.artImageUrl || latestVersion?.artImageKey) && (
+              <div className="mb-4">
+                <img
+                  src={artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`}
+                  alt="Arte gerada"
+                  className="max-h-96 rounded-lg object-contain"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Gerado em {latestVersion?.artGeneratedAt
+                    ? new Date(latestVersion.artGeneratedAt).toLocaleString('pt-BR')
+                    : 'agora'}
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={artPrompt}
+                onChange={(e) => setArtPrompt(e.target.value)}
+                placeholder="Ajustes opcionais (ex: fundo branco, produto centralizado...)"
+                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={() => generateArt({ salesSheetId: id, prompt: artPrompt || undefined })}
+                disabled={generatingArt}
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              >
+                {generatingArt
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando...</>
+                  : <><ImageIcon className="h-4 w-4" /> Gerar arte</>
+                }
+              </button>
+            </div>
+          </div>
 
           {/* Export */}
           <div className="rounded-lg border border-border bg-card p-6">
