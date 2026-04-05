@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Layers, Presentation, Library,
-  Package, CheckSquare, Image, FileSliders, Wand2, Activity,
+  Package, CheckSquare, Image, FileSliders, Wand2, Activity, FolderSync,
 } from 'lucide-react'
 
 const navSections = [
@@ -31,6 +31,7 @@ const navSections = [
       { href: '/prompt-studio', icon: Wand2, label: 'Prompt Studio' },
       { href: '/approvals', icon: CheckSquare, label: 'Aprovações' },
       { href: '/jobs', icon: Activity, label: 'Jobs' },
+      { href: '/drive-sync', icon: FolderSync, label: 'Google Drive' },
     ],
   },
 ]
