@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common'
 import { SalesSheetsService } from './sales-sheets.service'
+import { ArtComposerService } from './services/art-composer.service'
 import type { CreateSalesSheetDto } from './dto/create-sales-sheet.dto'
 
 @Controller('sales-sheets')
 export class SalesSheetsController {
-  constructor(private readonly service: SalesSheetsService) {}
+  constructor(
+    private readonly service: SalesSheetsService,
+    private readonly artComposer: ArtComposerService,
+  ) {}
 
   @Get()
   findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
@@ -24,5 +28,10 @@ export class SalesSheetsController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body('status') status: any) {
     return this.service.updateStatus(id, status)
+  }
+
+  @Post(':id/generate-art')
+  generateArt(@Param('id') id: string, @Body() body: { prompt?: string }) {
+    return this.artComposer.generateArt(id, body.prompt)
   }
 }
