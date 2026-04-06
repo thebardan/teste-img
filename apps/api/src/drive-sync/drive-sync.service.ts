@@ -4,8 +4,6 @@ import type { Queue } from 'bullmq'
 import { PrismaClient, DriveSyncStatus } from '@prisma/client'
 import { ConfigService } from '@nestjs/config'
 import { GoogleDriveService } from './services/google-drive.service'
-import { EmbeddingService } from './services/embedding.service'
-import { VectorMatchService } from './services/vector-match.service'
 import { StorageService } from '../storage/storage.service'
 import type { Env } from '../config/env'
 import type { SyncStatusDto, UnmatchedFolderDto } from './dto/sync-status.dto'
@@ -19,13 +17,12 @@ export class DriveSyncService implements OnModuleInit {
   private isRunning = false
   private lastSyncAt: Date | null = null
   private lastError: string | null = null
+  private folderCategoryMap = new Map<string, string>() // driveId → category name
 
   constructor(
     private prisma: PrismaClient,
     private config: ConfigService<Env>,
     private driveService: GoogleDriveService,
-    private embeddingService: EmbeddingService,
-    private vectorMatchService: VectorMatchService,
     private storageService: StorageService,
     @InjectQueue(QUEUE_DRIVE_SYNC) private syncQueue: Queue,
   ) {
@@ -52,6 +49,17 @@ export class DriveSyncService implements OnModuleInit {
       this.logger.error(`Sync failed: ${err.message}`, err.stack)
     })
     return { message: 'Sync started' }
+  }
+
+  async triggerDownloadOnly(): Promise<{ message: string }> {
+    if (this.isRunning) throw new ConflictException('Sync is already running')
+    this.isRunning = true
+    this.lastError = null
+    this.stage3_downloadImages()
+      .then(() => { this.lastSyncAt = new Date() })
+      .catch((err) => { this.lastError = `Stage 3: ${err.message}`; this.logger.error(`Download failed: ${err.message}`, err.stack) })
+      .finally(() => { this.isRunning = false })
+    return { message: 'Download-only started' }
   }
 
   async getStatus(): Promise<SyncStatusDto> {
@@ -116,12 +124,22 @@ export class DriveSyncService implements OnModuleInit {
     this.lastError = null
     try {
       await this.stage1_scanDrive()
+    } catch (err: any) {
+      this.logger.warn(`Stage 1 failed: ${err.message}`)
+      this.lastError = `Stage 1: ${err.message}`
+    }
+    try {
       await this.stage2_matchFolders()
+    } catch (err: any) {
+      this.logger.warn(`Stage 2 failed: ${err.message}`)
+      if (!this.lastError) this.lastError = `Stage 2: ${err.message}`
+    }
+    try {
       await this.stage3_downloadImages()
       this.lastSyncAt = new Date()
     } catch (err: any) {
-      this.lastError = err.message
-      throw err
+      this.logger.error(`Stage 3 failed: ${err.message}`, err.stack)
+      if (!this.lastError) this.lastError = `Stage 3: ${err.message}`
     } finally {
       this.isRunning = false
     }
@@ -129,69 +147,115 @@ export class DriveSyncService implements OnModuleInit {
 
   private async stage1_scanDrive(): Promise<void> {
     if (!this.rootFolderId) { this.logger.warn('No root folder configured, skipping scan'); return }
-    const driveFolders = await this.driveService.listSubfolders(this.rootFolderId)
-    const drivefolderIds = new Set(driveFolders.map((f) => f.id))
 
-    for (const df of driveFolders) {
+    // Level 1: brand/category folders (e.g. _TARGUS, Smart Home)
+    const categoryFolders = await this.driveService.listSubfolders(this.rootFolderId)
+    this.logger.log(`Found ${categoryFolders.length} category folders`)
+
+    // Level 2: product folders inside each category
+    this.folderCategoryMap.clear()
+    const allProductFolders: { id: string; name: string; categoryName: string }[] = []
+    for (const cat of categoryFolders) {
+      const categoryName = cat.name.replace(/^_/, '').trim()
+      const productFolders = await this.driveService.listSubfolders(cat.id)
+      // Skip non-product folders (start with _)
+      const realProducts = productFolders.filter((f) => !f.name.startsWith('_'))
+      for (const pf of realProducts) {
+        allProductFolders.push({ id: pf.id, name: pf.name, categoryName })
+        this.folderCategoryMap.set(pf.id, categoryName)
+      }
+      this.logger.log(`  ${cat.name}: ${realProducts.length} product folders`)
+    }
+
+    const productFolderIds = new Set(allProductFolders.map((f) => f.id))
+
+    // Upsert product folders into DB
+    for (const pf of allProductFolders) {
       await this.prisma.driveFolder.upsert({
-        where: { driveId: df.id },
-        create: { driveId: df.id, name: df.name },
-        update: { name: df.name },
+        where: { driveId: pf.id },
+        create: { driveId: pf.id, name: pf.name },
+        update: { name: pf.name },
       })
     }
 
-    for (const df of driveFolders) {
-      const dbFolder = await this.prisma.driveFolder.findUnique({ where: { driveId: df.id } })
+    // For each product folder, recursively find all images
+    let totalImages = 0
+    for (const pf of allProductFolders) {
+      const dbFolder = await this.prisma.driveFolder.findUnique({ where: { driveId: pf.id } })
       if (!dbFolder) continue
-      const driveImages = await this.driveService.listImages(df.id)
-      const driveImageIds = new Set(driveImages.map((i) => i.id))
-      for (const img of driveImages) {
+
+      const allImages = await this.driveService.listImagesRecursive(pf.id)
+      const driveImageIds = new Set(allImages.map((i) => i.id))
+      totalImages += allImages.length
+
+      for (const img of allImages) {
         await this.prisma.driveImage.upsert({
           where: { driveId: img.id },
           create: { driveId: img.id, driveFolderId: dbFolder.id, fileName: img.name, mimeType: img.mimeType, driveModifiedAt: new Date(img.modifiedTime) },
           update: { fileName: img.name, mimeType: img.mimeType, driveModifiedAt: new Date(img.modifiedTime) },
         })
       }
+
       await this.prisma.driveImage.updateMany({
         where: { driveFolderId: dbFolder.id, driveId: { notIn: [...driveImageIds] }, syncStatus: { not: 'DELETED' } },
         data: { syncStatus: 'DELETED' },
       })
     }
 
+    // Mark removed folders
     const allDbFolders = await this.prisma.driveFolder.findMany({ select: { id: true, driveId: true } })
     for (const dbf of allDbFolders) {
-      if (!drivefolderIds.has(dbf.driveId)) {
+      if (!productFolderIds.has(dbf.driveId)) {
         await this.prisma.driveImage.updateMany({ where: { driveFolderId: dbf.id }, data: { syncStatus: 'DELETED' } })
       }
     }
-    this.logger.log(`Stage 1 complete: ${driveFolders.length} folders`)
+    this.logger.log(`Stage 1 complete: ${allProductFolders.length} product folders, ${totalImages} images`)
   }
 
   private async stage2_matchFolders(): Promise<void> {
-    const productsWithoutEmbedding = await this.prisma.$queryRawUnsafe<{ id: string; name: string; sku: string }[]>(
-      `SELECT id, name, sku FROM "Product" WHERE embedding IS NULL AND "isActive" = true`,
-    )
-    for (const p of productsWithoutEmbedding) {
-      const result = await this.embeddingService.embed(`${p.name} ${p.sku}`)
-      await this.vectorMatchService.storeProductEmbedding(p.id, result.values)
-    }
-
     const unmatchedFolders = await this.prisma.driveFolder.findMany({ where: { matchStatus: 'UNMATCHED' } })
-    const threshold = this.vectorMatchService.getThreshold()
-    let matched = 0
+    let created = 0
 
     for (const folder of unmatchedFolders) {
-      const result = await this.embeddingService.embed(folder.name)
-      await this.vectorMatchService.storeFolderEmbedding(folder.id, result.values)
-      const match = await this.vectorMatchService.findBestMatch(result.values)
-      if (match && match.score >= threshold) {
-        await this.prisma.driveFolder.update({ where: { id: folder.id }, data: { productId: match.productId, matchScore: match.score, matchStatus: 'AUTO_MATCHED' } })
-        matched++
-      } else {
-        await this.prisma.driveFolder.update({ where: { id: folder.id }, data: { matchScore: match?.score ?? null, productId: match?.productId ?? null } })
-      }
+      const cleanName = folder.name.replace(/^_/, '').trim()
+      const sku = this.generateSku(cleanName)
+      const category = this.folderCategoryMap.get(folder.driveId)?.replace(/^_/, '').trim() ?? 'Geral'
+
+      const existing = await this.prisma.product.findUnique({ where: { sku } })
+      const product = existing ?? await this.prisma.product.create({
+        data: {
+          sku,
+          name: cleanName,
+          brand: this.inferBrand(category),
+          category,
+          description: `${cleanName} — importado automaticamente do Google Drive.`,
+        },
+      })
+
+      await this.prisma.driveFolder.update({
+        where: { id: folder.id },
+        data: { productId: product.id, matchScore: 1.0, matchStatus: 'AUTO_MATCHED' },
+      })
+      created++
     }
-    this.logger.log(`Stage 2 complete: ${matched}/${unmatchedFolders.length} matched`)
+    this.logger.log(`Stage 2 complete: ${created} products auto-created from ${unmatchedFolders.length} folders`)
+  }
+
+  private generateSku(name: string): string {
+    return name
+      .toUpperCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 30)
+  }
+
+  private inferBrand(category: string): string {
+    const lower = category.toLowerCase()
+    if (lower.includes('targus')) return 'Targus'
+    if (lower.includes('rapoo')) return 'Rapoo'
+    if (lower.includes('microsoft')) return 'Microsoft'
+    return 'Multilaser'
   }
 
   private async stage3_downloadImages(): Promise<void> {
@@ -216,21 +280,27 @@ export class DriveSyncService implements OnModuleInit {
     const folder = await this.prisma.driveFolder.findUnique({ where: { id: folderId }, include: { images: { where: { syncStatus: { not: 'DELETED' } } } } })
     if (!folder || !folder.productId) return
 
-    for (const img of folder.images) {
+    const WEB_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'])
+    const webImages = folder.images.filter((img) => WEB_MIME_TYPES.has(img.mimeType))
+    this.logger.log(`Folder ${folder.name}: ${webImages.length}/${folder.images.length} web images to download`)
+
+    for (const img of webImages) {
       if (img.syncStatus === 'SYNCED' && img.storageKey) continue
       try {
         const buffer = await this.driveService.downloadFile(img.driveId)
         const storageKey = `products/${folder.productId}/drive/${img.driveId}-${img.fileName}`
-        await this.storageService.upload(storageKey, buffer, img.mimeType, 'image')
+        await this.storageService.upload(storageKey, buffer, img.mimeType, 'any')
+        const publicUrl = this.storageService.getPublicUrl(storageKey)
         await this.prisma.driveImage.update({ where: { id: img.id }, data: { storageKey, syncStatus: 'SYNCED' } })
         const isPrimary = this.shouldBePrimary(img.fileName, folder.images)
         await this.prisma.productImage.upsert({
           where: { driveImageId: img.id },
-          create: { productId: folder.productId, url: storageKey, altText: img.fileName.replace(/\.[^.]+$/, ''), isPrimary, driveImageId: img.id },
-          update: { url: storageKey, altText: img.fileName.replace(/\.[^.]+$/, ''), isPrimary },
+          create: { productId: folder.productId, url: publicUrl, altText: img.fileName.replace(/\.[^.]+$/, ''), isPrimary, driveImageId: img.id },
+          update: { url: publicUrl, altText: img.fileName.replace(/\.[^.]+$/, ''), isPrimary },
         })
+        this.logger.log(`  Synced: ${img.fileName}`)
       } catch (err: any) {
-        this.logger.error(`Failed to download ${img.fileName}: ${err.message}`)
+        this.logger.error(`  Failed: ${img.fileName}: ${err.message}`)
         await this.prisma.driveImage.update({ where: { id: img.id }, data: { syncStatus: 'ERROR' } })
       }
     }

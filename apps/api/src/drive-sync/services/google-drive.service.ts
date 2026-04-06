@@ -30,9 +30,13 @@ export class GoogleDriveService {
       return
     }
 
+    // ConfigService may deliver literal \n (two chars) — replace with real newlines
+    const pemKey = key.split('\\n').join('\n')
+    this.logger.log(`Drive auth: email=${email}, key starts with ${pemKey.substring(0, 27)}`)
+
     const auth = new google.auth.JWT({
       email,
-      key: key.replace(/\\n/g, '\n'),
+      key: pemKey,
       scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     })
 
@@ -49,6 +53,8 @@ export class GoogleDriveService {
         fields: 'nextPageToken, files(id, name)',
         pageSize: 100,
         pageToken,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       })
 
       for (const f of res.data.files ?? []) {
@@ -70,6 +76,8 @@ export class GoogleDriveService {
         fields: 'nextPageToken, files(id, name, mimeType, modifiedTime)',
         pageSize: 100,
         pageToken,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       })
 
       for (const f of res.data.files ?? []) {
@@ -88,9 +96,22 @@ export class GoogleDriveService {
     return images
   }
 
+  async listImagesRecursive(folderId: string): Promise<DriveFileInfo[]> {
+    const images = await this.listImages(folderId)
+    // Keep only web-compatible image formats
+    const WEB_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'])
+    const webImages = images.filter((img) => WEB_MIMES.has(img.mimeType))
+    const subfolders = await this.listSubfolders(folderId)
+    for (const sub of subfolders) {
+      const subImages = await this.listImagesRecursive(sub.id)
+      webImages.push(...subImages)
+    }
+    return webImages
+  }
+
   async downloadFile(fileId: string): Promise<Buffer> {
     const res = await this.drive.files.get(
-      { fileId, alt: 'media' },
+      { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'stream' },
     )
 

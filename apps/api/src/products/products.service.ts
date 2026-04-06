@@ -8,9 +8,11 @@ export class ProductsService {
   constructor(private prisma: PrismaClient) {}
 
   async findAll(filters: ProductFiltersDto): Promise<PaginatedProductsDto> {
-    const page = filters.page ?? 1
-    const pageSize = filters.pageSize ?? 20
+    console.log('[ProductsService] filters received:', JSON.stringify(filters))
+    const page = Number(filters.page) || 1
+    const pageSize = Number(filters.pageSize) || 20
     const skip = (page - 1) * pageSize
+    console.log('[ProductsService] page=%d pageSize=%d skip=%d', page, pageSize, skip)
 
     const where: any = {}
     if (filters.isActive !== undefined) where.isActive = filters.isActive

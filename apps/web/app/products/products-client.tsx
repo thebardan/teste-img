@@ -69,9 +69,9 @@ export function ProductsClient() {
                 className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-card/80"
               >
                 {/* Image placeholder */}
-                <div className="mb-3 flex h-32 items-center justify-center rounded-md bg-muted/30">
+                <div className="mb-3 flex h-32 items-center justify-center rounded-md bg-muted/30 overflow-hidden">
                   {product.primaryImageUrl ? (
-                    <span className="text-xs text-muted-foreground">{product.sku}</span>
+                    <img src={product.primaryImageUrl} alt={product.name} className="h-full w-full object-contain" />
                   ) : (
                     <Package className="h-8 w-8 text-muted-foreground/40" />
                   )}

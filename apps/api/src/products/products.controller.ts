@@ -8,15 +8,7 @@ export class ProductsController {
 
   @Get()
   findAll(@Query() query: ProductFiltersDto) {
-    return this.productsService.findAll({
-      ...query,
-      page: query.page ? Number(query.page) : 1,
-      pageSize: query.pageSize ? Number(query.pageSize) : 20,
-      isActive:
-        query.isActive !== undefined
-          ? query.isActive === (true as any) || query.isActive === ('true' as any)
-          : undefined,
-    })
+    return this.productsService.findAll(query)
   }
 
   @Get('categories')

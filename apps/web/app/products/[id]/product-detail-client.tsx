@@ -42,8 +42,12 @@ export function ProductDetailClient({ id }: { id: string }) {
 
       {/* Header */}
       <div className="mb-8 flex items-start gap-6">
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/20">
-          <Package className="h-10 w-10 text-muted-foreground/40" />
+        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/20 overflow-hidden">
+          {product.primaryImageUrl ? (
+            <img src={product.primaryImageUrl} alt={product.name} className="h-full w-full object-contain" />
+          ) : (
+            <Package className="h-10 w-10 text-muted-foreground/40" />
+          )}
         </div>
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -57,6 +61,25 @@ export function ProductDetailClient({ id }: { id: string }) {
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-2xl">{product.description}</p>
         </div>
       </div>
+
+      {/* Images */}
+      {product.images.length > 0 && (
+        <div className="mb-6 rounded-lg border border-border bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Imagens</h2>
+          <div className="flex flex-wrap gap-3">
+            {product.images.map((img) => (
+              <div key={img.id} className="relative h-32 w-32 overflow-hidden rounded-md border border-border bg-muted/20">
+                <img src={img.url} alt={product.name} className="h-full w-full object-contain" />
+                {img.isPrimary && (
+                  <span className="absolute bottom-1 left-1 rounded bg-primary/80 px-1 py-0.5 text-[10px] text-primary-foreground">
+                    Principal
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Benefits */}

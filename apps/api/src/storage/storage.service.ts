@@ -41,7 +41,7 @@ export class StorageService implements OnModuleInit {
     this.client = new Minio.Client({
       endPoint: this.config.get('MINIO_ENDPOINT')!,
       port: this.config.get<number>('MINIO_PORT'),
-      useSSL: this.config.get<boolean>('MINIO_USE_SSL'),
+      useSSL: this.config.get('MINIO_USE_SSL') === 'true',
       accessKey: this.config.get('MINIO_ACCESS_KEY')!,
       secretKey: this.config.get('MINIO_SECRET_KEY')!,
     })
@@ -103,6 +103,13 @@ export class StorageService implements OnModuleInit {
       'Content-Type': contentType,
     })
     return key
+  }
+
+  getPublicUrl(key: string): string {
+    const protocol = this.config.get('MINIO_USE_SSL') === 'true' ? 'https' : 'http'
+    const endpoint = this.config.get('MINIO_ENDPOINT')!
+    const port = this.config.get<number>('MINIO_PORT') ?? 9000
+    return `${protocol}://${endpoint}:${port}/${this.bucket}/${key}`
   }
 
   async getPresignedUrl(key: string, expirySeconds = 3600): Promise<string> {
