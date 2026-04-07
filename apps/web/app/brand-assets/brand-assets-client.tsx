@@ -77,7 +77,7 @@ function AssetCard({ asset }: { asset: BrandAsset }) {
             <div className="space-y-1">
               {asset.rules.map((rule) => (
                 <div key={rule.id} className="flex items-center gap-2 text-xs">
-                  <div className="flex items-center gap-1 text-yellow-400">
+                  <div className="flex items-center gap-1 text-warning">
                     <Star className="h-3 w-3 fill-current" />
                     <span className="font-mono">{rule.score}</span>
                   </div>

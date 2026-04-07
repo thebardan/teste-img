@@ -126,8 +126,8 @@ export function TemplateDetailClient({ id }: { id: string }) {
           className={cn(
             'rounded-full border px-3 py-1 text-xs transition-colors',
             template.isActive
-              ? 'text-green-400 border-green-400/30 hover:border-red-400/30 hover:text-red-400'
-              : 'text-muted-foreground border-border hover:border-green-400/30 hover:text-green-400',
+              ? 'text-success border-success/30 hover:border-danger/30 hover:text-danger'
+              : 'text-muted-foreground border-border hover:border-success/30 hover:text-success',
           )}
         >
           {template.isActive ? 'Ativo' : 'Inativo'}

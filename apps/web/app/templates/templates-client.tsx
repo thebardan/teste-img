@@ -5,16 +5,20 @@ import Link from 'next/link'
 import { useTemplates } from '@/lib/hooks/use-templates'
 import type { TemplateType } from '@/lib/hooks/use-templates'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Layout, ChevronRight, Layers, MonitorPlay } from 'lucide-react'
 
 const TYPE_CONFIG: Record<TemplateType, { label: string; category: 'sheet' | 'deck'; color: string }> = {
-  SALES_SHEET_HORIZONTAL: { label: 'Lâmina Horizontal', category: 'sheet', color: 'text-blue-400 border-blue-400/30' },
-  SALES_SHEET_VERTICAL:   { label: 'Lâmina Vertical',   category: 'sheet', color: 'text-blue-400 border-blue-400/30' },
-  SALES_SHEET_A4:         { label: 'Lâmina A4',         category: 'sheet', color: 'text-blue-400 border-blue-400/30' },
-  DECK_CORPORATE:         { label: 'Deck Corporativo',  category: 'deck',  color: 'text-violet-400 border-violet-400/30' },
-  DECK_RETAIL:            { label: 'Deck Varejo',       category: 'deck',  color: 'text-violet-400 border-violet-400/30' },
-  DECK_PREMIUM:           { label: 'Deck Premium',      category: 'deck',  color: 'text-violet-400 border-violet-400/30' },
-  DECK_DISTRIBUTOR:       { label: 'Deck Distribuidor', category: 'deck',  color: 'text-violet-400 border-violet-400/30' },
+  SALES_SHEET_HORIZONTAL: { label: 'Lâmina Horizontal', category: 'sheet', color: 'text-primary border-primary/30' },
+  SALES_SHEET_VERTICAL:   { label: 'Lâmina Vertical',   category: 'sheet', color: 'text-primary border-primary/30' },
+  SALES_SHEET_A4:         { label: 'Lâmina A4',         category: 'sheet', color: 'text-primary border-primary/30' },
+  DECK_CORPORATE:         { label: 'Deck Corporativo',  category: 'deck',  color: 'text-accent border-accent/30' },
+  DECK_RETAIL:            { label: 'Deck Varejo',       category: 'deck',  color: 'text-accent border-accent/30' },
+  DECK_PREMIUM:           { label: 'Deck Premium',      category: 'deck',  color: 'text-accent border-accent/30' },
+  DECK_DISTRIBUTOR:       { label: 'Deck Distribuidor', category: 'deck',  color: 'text-accent border-accent/30' },
 }
 
 type Tab = 'all' | 'sheet' | 'deck'
@@ -33,57 +37,43 @@ export function TemplatesClient() {
   const decks  = templates?.filter((t) => TYPE_CONFIG[t.type]?.category === 'deck')  ?? []
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8 max-w-6xl animate-slide-up">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Templates</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
           {templates?.length ?? 0} templates — {sheets.length} lâminas · {decks.length} decks
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg border border-border bg-muted/10 p-1 w-fit">
-        {(['all', 'sheet', 'deck'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={cn(
-              'rounded-md px-4 py-1.5 text-sm transition-colors',
-              tab === t
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t === 'all' ? 'Todos' : t === 'sheet' ? 'Lâminas' : 'Decks'}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="all" onValueChange={(v) => setTab(v as Tab)}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="all">Todos</TabsTrigger>
+          <TabsTrigger value="sheet">Lâminas</TabsTrigger>
+          <TabsTrigger value="deck">Decks</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-36 rounded-lg border border-border bg-muted/20 animate-pulse" />
+            <Skeleton key={i} className="h-48 rounded-lg" />
           ))}
         </div>
       ) : !filtered?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
-          <Layout className="mb-3 h-10 w-10 text-muted-foreground/40" />
-          <p className="font-medium">Nenhum template</p>
-        </div>
+        <EmptyState icon={Layout} title="Nenhum template" />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
           {filtered.map((tpl) => {
             const cfg = TYPE_CONFIG[tpl.type]
             const zoneCount = Object.keys(tpl.zonesConfig).length
-            const Icon = cfg?.category === 'deck' ? MonitorPlay : Layers
             return (
               <Link
                 key={tpl.id}
                 href={`/templates/${tpl.id}`}
-                className="group flex flex-col rounded-lg border border-border bg-card p-5 hover:border-primary/50 transition-colors"
+                className="group flex flex-col rounded-lg border border-border bg-canvas p-5 hover:shadow-card hover:border-fg-tertiary hover:-translate-y-0.5 transition-all duration-200"
               >
-                {/* Zone preview */}
-                <div className="mb-4 h-24 w-full overflow-hidden rounded-md border border-border/50 bg-muted/10 relative">
+                <div className="mb-4 h-24 w-full overflow-hidden rounded-md border border-border/50 bg-black/[0.03] relative">
                   <ZonePreview zones={tpl.zonesConfig} category={cfg?.category ?? 'sheet'} />
                 </div>
 
@@ -91,23 +81,21 @@ export function TemplatesClient() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{tpl.name}</p>
                     {tpl.description && (
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                      <p className="mt-0.5 text-xs text-fg-secondary line-clamp-2">{tpl.description}</p>
                     )}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-foreground transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-fg-tertiary shrink-0 mt-0.5 group-hover:text-fg transition-colors" />
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  <span className={cn('text-xs rounded-full border px-2.5 py-0.5', cfg?.color ?? 'text-muted-foreground border-border')}>
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <Badge variant={cfg?.category === 'deck' ? 'accent' : 'default'} className="text-[10px]">
                     {cfg?.label ?? tpl.type}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{zoneCount} zonas</span>
+                  </Badge>
+                  <span className="text-xs text-fg-secondary">{zoneCount} zonas</span>
                   {tpl.variants.length > 0 && (
-                    <span className="text-xs text-muted-foreground">{tpl.variants.length} variante(s)</span>
+                    <span className="text-xs text-fg-secondary">{tpl.variants.length} variante(s)</span>
                   )}
-                  {!tpl.isActive && (
-                    <span className="text-xs text-muted-foreground/50">Inativo</span>
-                  )}
+                  {!tpl.isActive && <Badge variant="default" className="text-[10px]">Inativo</Badge>}
                 </div>
               </Link>
             )
@@ -147,7 +135,7 @@ function ZonePreview({ zones, category }: { zones: Record<string, any>; category
   return (
     <div className="absolute inset-0">
       {Object.entries(zones).map(([zoneName, config]) => {
-        const color = ZONE_COLORS[zoneName] ?? 'bg-muted/20 border-border'
+        const color = ZONE_COLORS[zoneName] ?? 'bg-black/[0.03] border-border'
         return (
           <div
             key={zoneName}

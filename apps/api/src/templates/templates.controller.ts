@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common'
 import { TemplatesService } from './templates.service'
 import { TemplateType } from '@prisma/client'
-import type { CreateTemplateDto } from './dto/create-template.dto'
-import type { UpdateTemplateDto } from './dto/update-template.dto'
-import type { CreateVariantDto } from './dto/create-variant.dto'
+import { CreateTemplateDto } from './dto/create-template.dto'
+import { UpdateTemplateDto } from './dto/update-template.dto'
+import { CreateVariantDto } from './dto/create-variant.dto'
 
 @Controller('templates')
 export class TemplatesController {

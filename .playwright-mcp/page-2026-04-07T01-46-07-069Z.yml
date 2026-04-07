@@ -1,0 +1,12 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e5]
+    - heading "Multi AI Studio" [level=1] [ref=e8]
+    - paragraph [ref=e9]: Plataforma interna de marketing com IA
+    - button "Entrar com Google" [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+      - text: Entrar com Google
+    - generic [ref=e18]: apenas em dev
+    - button "Entrar como Dev User" [ref=e20] [cursor=pointer]
+    - paragraph [ref=e21]: Acesso restrito a colaboradores Multilaser
+  - alert [ref=e22]

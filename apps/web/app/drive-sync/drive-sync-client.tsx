@@ -45,9 +45,9 @@ export function DriveSyncClient() {
       {status && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Pastas" value={status.stats.totalFolders} />
-          <StatCard label="Vinculadas" value={status.stats.matchedFolders} color="text-green-400" />
-          <StatCard label="Pendentes" value={status.stats.unmatchedFolders} color="text-yellow-400" />
-          <StatCard label="Imagens sincronizadas" value={status.stats.syncedImages} color="text-blue-400" />
+          <StatCard label="Vinculadas" value={status.stats.matchedFolders} color="text-success" />
+          <StatCard label="Pendentes" value={status.stats.unmatchedFolders} color="text-warning" />
+          <StatCard label="Imagens sincronizadas" value={status.stats.syncedImages} color="text-primary" />
         </div>
       )}
 
@@ -143,9 +143,9 @@ function UnmatchedRow({
         {folder.matchScore !== null ? (
           <span className={cn(
             'rounded px-1.5 py-0.5 font-mono text-xs',
-            folder.matchScore >= 0.75 ? 'bg-green-400/10 text-green-400' :
-            folder.matchScore >= 0.5 ? 'bg-yellow-400/10 text-yellow-400' :
-            'bg-red-400/10 text-red-400',
+            folder.matchScore >= 0.75 ? 'bg-success/10 text-success' :
+            folder.matchScore >= 0.5 ? 'bg-warning/10 text-warning' :
+            'bg-danger/10 text-danger',
           )}>
             {(folder.matchScore * 100).toFixed(0)}%
           </span>

@@ -21,6 +21,8 @@ export interface SalesSheetVersion {
   createdAt: string
   artifacts: any[]
   inferenceLogs: any[]
+  artImageKey?: string
+  artGeneratedAt?: string
 }
 
 export interface SalesSheetDetail {
@@ -64,5 +66,32 @@ export function useGenerateSalesSheet() {
     mutationFn: (input: GenerateInput) =>
       apiFetch('/sales-sheets/generate', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sales-sheets'] }),
+  })
+}
+
+export function useDeleteSalesSheet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/sales-sheets/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sales-sheets'] }),
+  })
+}
+
+export function useUpdateSalesSheetContent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, content }: { id: string; content: Record<string, any> }) =>
+      apiFetch(`/sales-sheets/${id}/content`, { method: 'PATCH', body: JSON.stringify(content) }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['sales-sheet', vars.id] }),
+  })
+}
+
+export function useRegenerateSalesSheetField() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, field }: { id: string; field: string }) =>
+      apiFetch(`/sales-sheets/${id}/regenerate-field`, { method: 'POST', body: JSON.stringify({ field }) }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['sales-sheet', vars.id] }),
   })
 }

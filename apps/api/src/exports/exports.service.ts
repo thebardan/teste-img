@@ -107,6 +107,7 @@ export class ExportsService {
       where: { id: salesSheetId },
       include: {
         product: { select: { name: true } },
+        template: { select: { zonesConfig: true, type: true } },
         versions: {
           orderBy: { versionNumber: 'desc' },
           take: 1,
@@ -119,7 +120,21 @@ export class ExportsService {
     if (!version) throw new NotFoundException('No version found for this sales sheet')
 
     const content = version.content as any
-    const buffer = await this.pdfComposer.composeSalesSheet(content, sheet.product.name)
+    const zonesConfig = sheet.template?.zonesConfig as any
+    const templateType = (sheet.template?.type ?? '') as string
+    const orientation = templateType.includes('HORIZONTAL') ? 'landscape' as const : 'portrait' as const
+
+    // Load the Gemini-generated art image if available
+    let artImageBuffer: Buffer | null = null
+    if (version.artImageKey) {
+      try {
+        artImageBuffer = await this.storage.getBuffer(version.artImageKey)
+      } catch {
+        // Art not found in storage — fall back to composed layout
+      }
+    }
+
+    const buffer = await this.pdfComposer.composeSalesSheet(content, sheet.product.name, zonesConfig, orientation, artImageBuffer)
 
     const filename = `${slugify(sheet.title)}-v${version.versionNumber}.pdf`
     const storageKey = `exports/sales-sheets/${salesSheetId}/${filename}`

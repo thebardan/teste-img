@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Layers, Presentation, Library,
   Package, CheckSquare, Image, FileSliders, Wand2, Activity, FolderSync,
+  PanelLeftClose, PanelLeft,
 } from 'lucide-react'
 
 const navSections = [
@@ -38,45 +40,99 @@ const navSections = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <aside className="flex h-full w-52 flex-col border-r border-border bg-background">
-      <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-        <div className="h-2 w-2 rounded-full bg-primary" />
-        <span className="text-sm font-bold tracking-tight">Multi AI Studio</span>
-      </div>
-      <nav className="flex-1 overflow-y-auto py-2">
-        <Link
-          href="/dashboard"
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 text-sm border-l-2 border-transparent text-muted-foreground hover:text-foreground transition-colors',
-            pathname === '/dashboard' && 'border-primary text-primary bg-primary/5',
+    <aside
+      className={cn(
+        'flex h-full flex-col glass-nav text-white transition-all duration-300 ease-in-out',
+        collapsed ? 'w-[56px]' : 'w-52'
+      )}
+    >
+      {/* Logo */}
+      <div className="flex h-12 items-center justify-between px-3">
+        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          {!collapsed && (
+            <span className="text-micro font-semibold tracking-tight whitespace-nowrap opacity-90">
+              Multi AI Studio
+            </span>
           )}
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Dashboard
         </Link>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="rounded-micro p-1 text-white/40 hover:text-white/80 transition-colors shrink-0"
+        >
+          {collapsed ? <PanelLeft className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-1.5">
+        <NavItem
+          href="/dashboard"
+          icon={LayoutDashboard}
+          label="Dashboard"
+          active={pathname === '/dashboard'}
+          collapsed={collapsed}
+        />
+
         {navSections.map((section) => (
-          <div key={section.label} className="mt-2">
-            <p className="px-4 py-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
-              {section.label}
-            </p>
+          <div key={section.label} className="mt-3">
+            {!collapsed && (
+              <p className="px-3 py-1 text-nano font-semibold uppercase tracking-widest text-white/30">
+                {section.label}
+              </p>
+            )}
+            {collapsed && <div className="mx-3 my-1 border-t border-white/10" />}
             {section.items.map((item) => (
-              <Link
+              <NavItem
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 text-sm border-l-2 border-transparent text-muted-foreground hover:text-foreground transition-colors',
-                  pathname.startsWith(item.href) && 'border-primary text-primary bg-primary/5',
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+                icon={item.icon}
+                label={item.label}
+                active={pathname.startsWith(item.href)}
+                collapsed={collapsed}
+              />
             ))}
           </div>
         ))}
       </nav>
     </aside>
+  )
+}
+
+function NavItem({
+  href,
+  icon: Icon,
+  label,
+  active,
+  collapsed,
+}: {
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  active: boolean
+  collapsed: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      title={collapsed ? label : undefined}
+      className={cn(
+        'flex items-center gap-2 px-3 py-1.5 text-micro transition-colors duration-200 mx-1 rounded-micro',
+        collapsed && 'justify-center',
+        active
+          ? 'bg-white/[0.12] text-white font-medium'
+          : 'text-white/60 hover:text-white/90 hover:bg-white/[0.06]',
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </Link>
   )
 }

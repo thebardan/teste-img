@@ -21,9 +21,9 @@ type Tab = ApprovalStatus | 'all'
 
 const STATUS_CONFIG: Record<ApprovalStatus, { label: string; color: string }> = {
   DRAFT:     { label: 'Rascunho',   color: 'text-muted-foreground border-border' },
-  IN_REVIEW: { label: 'Em revisão', color: 'text-yellow-400 border-yellow-400/30' },
-  APPROVED:  { label: 'Aprovado',   color: 'text-green-400 border-green-400/30' },
-  REJECTED:  { label: 'Rejeitado',  color: 'text-red-400 border-red-400/30' },
+  IN_REVIEW: { label: 'Em revisão', color: 'text-warning border-warning/30' },
+  APPROVED:  { label: 'Aprovado',   color: 'text-success border-success/30' },
+  REJECTED:  { label: 'Rejeitado',  color: 'text-danger border-danger/30' },
   ARCHIVED:  { label: 'Arquivado',  color: 'text-muted-foreground/50 border-border/50' },
 }
 
@@ -70,7 +70,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
         <button
           onClick={() => submit.mutateAsync({ id })}
           disabled={busy}
-          className="flex items-center gap-1 rounded-md border border-yellow-400/30 px-2.5 py-1 text-xs text-yellow-400 hover:bg-yellow-400/10 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1 rounded-md border border-warning/30 px-2.5 py-1 text-xs text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
         >
           <Send className="h-3 w-3" /> Enviar revisão
         </button>
@@ -80,14 +80,14 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
           <button
             onClick={() => approve.mutateAsync({ id })}
             disabled={busy}
-            className="flex items-center gap-1 rounded-md border border-green-400/30 px-2.5 py-1 text-xs text-green-400 hover:bg-green-400/10 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 rounded-md border border-success/30 px-2.5 py-1 text-xs text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
           >
             <CheckCircle2 className="h-3 w-3" /> Aprovar
           </button>
           <button
             onClick={() => setShowReject(true)}
             disabled={busy}
-            className="flex items-center gap-1 rounded-md border border-red-400/30 px-2.5 py-1 text-xs text-red-400 hover:bg-red-400/10 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 rounded-md border border-danger/30 px-2.5 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50 transition-colors"
           >
             <XCircle className="h-3 w-3" /> Rejeitar
           </button>
@@ -97,7 +97,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
         <button
           onClick={() => submit.mutateAsync({ id })}
           disabled={busy}
-          className="flex items-center gap-1 rounded-md border border-yellow-400/30 px-2.5 py-1 text-xs text-yellow-400 hover:bg-yellow-400/10 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1 rounded-md border border-warning/30 px-2.5 py-1 text-xs text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
         >
           <Send className="h-3 w-3" /> Reenviar
         </button>
@@ -124,7 +124,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
           <button
             onClick={handleReject}
             disabled={!comment.trim() || reject.isPending}
-            className="rounded-md border border-red-400/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10 disabled:opacity-50"
+            className="rounded-md border border-danger/30 px-3 py-1.5 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
           >
             Confirmar
           </button>

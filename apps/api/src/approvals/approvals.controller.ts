@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common'
 import { ApprovalsService } from './approvals.service'
 import { ApprovalStatus } from '@prisma/client'
-import type { ReviewActionDto } from './dto/review-action.dto'
+import { ReviewActionDto } from './dto/review-action.dto'
 
 @Controller('approvals')
 export class ApprovalsController {

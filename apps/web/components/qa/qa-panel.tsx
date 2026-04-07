@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils'
 import { ShieldCheck, ShieldAlert, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const LEVEL_COLOR: Record<QACheckLevel, string> = {
-  ERROR:   'text-red-400',
-  WARNING: 'text-yellow-400',
-  INFO:    'text-blue-400',
+  ERROR:   'text-danger',
+  WARNING: 'text-warning',
+  INFO:    'text-primary',
 }
 
 interface QAPanelProps {
@@ -36,7 +36,7 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
         {result && (
           <span className={cn(
             'text-xs font-bold rounded-full border px-2.5 py-0.5',
-            result.passed ? 'text-green-400 border-green-400/30' : 'text-red-400 border-red-400/30',
+            result.passed ? 'text-success border-success/30' : 'text-danger border-danger/30',
           )}>
             {result.score}/100
           </span>
@@ -56,10 +56,10 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
         <>
           <div className="flex items-center gap-3 text-sm">
             {result.passed
-              ? <ShieldCheck className="h-5 w-5 text-green-400 shrink-0" />
-              : <ShieldAlert className="h-5 w-5 text-red-400 shrink-0" />
+              ? <ShieldCheck className="h-5 w-5 text-success shrink-0" />
+              : <ShieldAlert className="h-5 w-5 text-danger shrink-0" />
             }
-            <span className={result.passed ? 'text-green-400' : 'text-red-400'}>
+            <span className={result.passed ? 'text-success' : 'text-danger'}>
               {result.passed ? 'Aprovado' : `${errors} erro(s), ${warnings} aviso(s)`}
             </span>
           </div>
@@ -76,7 +76,7 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
             <div className="space-y-1.5 max-h-56 overflow-y-auto">
               {result.checks.map((c, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
-                  <span className={cn('mt-0.5 shrink-0', c.passed ? 'text-green-400' : LEVEL_COLOR[c.level])}>
+                  <span className={cn('mt-0.5 shrink-0', c.passed ? 'text-success' : LEVEL_COLOR[c.level])}>
                     {c.passed ? '✓' : c.level === 'ERROR' ? '✗' : '⚠'}
                   </span>
                   <span className={c.passed ? 'text-muted-foreground' : 'text-foreground'}>{c.message}</span>
@@ -87,7 +87,7 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
                   <p className="text-xs text-muted-foreground font-medium">Análise IA:</p>
                   {result.aiFindings.map((f, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="text-yellow-400 shrink-0">⚠</span>
+                      <span className="text-warning shrink-0">⚠</span>
                       <span>{f}</span>
                     </div>
                   ))}

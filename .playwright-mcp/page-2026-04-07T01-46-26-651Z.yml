@@ -1,0 +1,265 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e6]: Multi AI Studio
+      - navigation [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e9]
+          - text: Dashboard
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: Criar
+          - link "Lâminas" [ref=e16] [cursor=pointer]:
+            - /url: /sales-sheets
+            - img [ref=e17]
+            - text: Lâminas
+          - link "Apresentações" [ref=e21] [cursor=pointer]:
+            - /url: /presentations
+            - img [ref=e22]
+            - text: Apresentações
+        - generic [ref=e25]:
+          - paragraph [ref=e26]: Biblioteca
+          - link "Materiais" [ref=e27] [cursor=pointer]:
+            - /url: /library
+            - img [ref=e28]
+            - text: Materiais
+          - link "Produtos" [ref=e30] [cursor=pointer]:
+            - /url: /products
+            - img [ref=e31]
+            - text: Produtos
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: Admin
+          - link "Brand Assets" [ref=e37] [cursor=pointer]:
+            - /url: /brand-assets
+            - img [ref=e38]
+            - text: Brand Assets
+          - link "Templates" [ref=e42] [cursor=pointer]:
+            - /url: /templates
+            - img [ref=e43]
+            - text: Templates
+          - link "Prompt Studio" [ref=e46] [cursor=pointer]:
+            - /url: /prompt-studio
+            - img [ref=e47]
+            - text: Prompt Studio
+          - link "Aprovações" [ref=e50] [cursor=pointer]:
+            - /url: /approvals
+            - img [ref=e51]
+            - text: Aprovações
+          - link "Jobs" [ref=e54] [cursor=pointer]:
+            - /url: /jobs
+            - img [ref=e55]
+            - text: Jobs
+          - link "Google Drive" [ref=e57] [cursor=pointer]:
+            - /url: /drive-sync
+            - img [ref=e58]
+            - text: Google Drive
+    - main [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - heading "Catálogo de Produtos" [level=1] [ref=e67]
+          - paragraph [ref=e68]: 536 produtos cadastrados
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - img [ref=e71]
+            - textbox "Buscar por nome, SKU..." [ref=e74]
+          - combobox [ref=e75]:
+            - option "Todas as categorias" [selected]
+            - option "MICROSOFT"
+            - option "MULTI ACESSÓRIOS MOBILE"
+            - option "OFFICE MULTI"
+            - option "OUTROS"
+            - option "PRODUTO EOL"
+            - option "RAPOO"
+            - option "Smart Home"
+            - option "TARGUS"
+        - generic [ref=e76]:
+          - link "0_APOIO 0-APOIO RAPOO 0_APOIO 0_APOIO — importado automaticamente do Google Drive." [ref=e77] [cursor=pointer]:
+            - /url: /products/cmnmi3m760sld12tn74cfqnn4
+            - img "0_APOIO" [ref=e79]
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - generic [ref=e82]: 0-APOIO
+                - generic [ref=e83]: RAPOO
+              - paragraph [ref=e84]: 0_APOIO
+              - paragraph [ref=e85]: 0_APOIO — importado automaticamente do Google Drive.
+          - link "1_EMBALAGENS 1-EMBALAGENS RAPOO 1_EMBALAGENS 1_EMBALAGENS — importado automaticamente do Google Drive." [ref=e86] [cursor=pointer]:
+            - /url: /products/cmnmi3m7o0slh12tncpo5t6dj
+            - img "1_EMBALAGENS" [ref=e88]
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - generic [ref=e91]: 1-EMBALAGENS
+                - generic [ref=e92]: RAPOO
+              - paragraph [ref=e93]: 1_EMBALAGENS
+              - paragraph [ref=e94]: 1_EMBALAGENS — importado automaticamente do Google Drive.
+          - link "2-TRADE RAPOO 2_TRADE 2_TRADE — importado automaticamente do Google Drive." [ref=e95] [cursor=pointer]:
+            - /url: /products/cmnmi3m7k0slg12tnibhtsnvm
+            - img [ref=e97]
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]: 2-TRADE
+                - generic [ref=e104]: RAPOO
+              - paragraph [ref=e105]: 2_TRADE
+              - paragraph [ref=e106]: 2_TRADE — importado automaticamente do Google Drive.
+          - link "3_COMUNICAÇÃO 3-COMUNICACAO RAPOO 3_COMUNICAÇÃO 3_COMUNICAÇÃO — importado automaticamente do Google Drive." [ref=e107] [cursor=pointer]:
+            - /url: /products/cmnmi3m7f0slf12tnsjcbl6u6
+            - img "3_COMUNICAÇÃO" [ref=e109]
+            - generic [ref=e110]:
+              - generic [ref=e111]:
+                - generic [ref=e112]: 3-COMUNICACAO
+                - generic [ref=e113]: RAPOO
+              - paragraph [ref=e114]: 3_COMUNICAÇÃO
+              - paragraph [ref=e115]: 3_COMUNICAÇÃO — importado automaticamente do Google Drive.
+          - link "4-GUIDE RAPOO 4_GUIDE 4_GUIDE — importado automaticamente do Google Drive." [ref=e116] [cursor=pointer]:
+            - /url: /products/cmnmi3m7b0sle12tnm5uym85v
+            - img [ref=e118]
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e124]: 4-GUIDE
+                - generic [ref=e125]: RAPOO
+              - paragraph [ref=e126]: 4_GUIDE
+              - paragraph [ref=e127]: 4_GUIDE — importado automaticamente do Google Drive.
+          - link "AC019 AC019 OFFICE MULTI AC019 AC019 — importado automaticamente do Google Drive." [ref=e128] [cursor=pointer]:
+            - /url: /products/cmnmi3lb90set12tnezbfzimb
+            - img "AC019" [ref=e130]
+            - generic [ref=e131]:
+              - generic [ref=e132]:
+                - generic [ref=e133]: AC019
+                - generic [ref=e134]: OFFICE MULTI
+              - paragraph [ref=e135]: AC019
+              - paragraph [ref=e136]: AC019 — importado automaticamente do Google Drive.
+          - link "AC021 AC021 OFFICE MULTI AC021 AC021 — importado automaticamente do Google Drive." [ref=e137] [cursor=pointer]:
+            - /url: /products/cmnmi3lb50ses12tng9b31asz
+            - img "AC021" [ref=e139]
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - generic [ref=e142]: AC021
+                - generic [ref=e143]: OFFICE MULTI
+              - paragraph [ref=e144]: AC021
+              - paragraph [ref=e145]: AC021 — importado automaticamente do Google Drive.
+          - link "AC024 AC024 OFFICE MULTI AC024 AC024 — importado automaticamente do Google Drive." [ref=e146] [cursor=pointer]:
+            - /url: /products/cmnmi3lb00ser12tncjr6s5c1
+            - img "AC024" [ref=e148]
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - generic [ref=e151]: AC024
+                - generic [ref=e152]: OFFICE MULTI
+              - paragraph [ref=e153]: AC024
+              - paragraph [ref=e154]: AC024 — importado automaticamente do Google Drive.
+          - link "AC027 AC027 OFFICE MULTI AC027 AC027 — importado automaticamente do Google Drive." [ref=e155] [cursor=pointer]:
+            - /url: /products/cmnmi3lav0seq12tn1tlndh0n
+            - img "AC027" [ref=e157]
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - generic [ref=e160]: AC027
+                - generic [ref=e161]: OFFICE MULTI
+              - paragraph [ref=e162]: AC027
+              - paragraph [ref=e163]: AC027 — importado automaticamente do Google Drive.
+          - link "AC033 AC033 OFFICE MULTI AC033 AC033 — importado automaticamente do Google Drive." [ref=e164] [cursor=pointer]:
+            - /url: /products/cmnmi3lar0sep12tnx4phx7yv
+            - img "AC033" [ref=e166]
+            - generic [ref=e167]:
+              - generic [ref=e168]:
+                - generic [ref=e169]: AC033
+                - generic [ref=e170]: OFFICE MULTI
+              - paragraph [ref=e171]: AC033
+              - paragraph [ref=e172]: AC033 — importado automaticamente do Google Drive.
+          - link "AC042 AC042 OFFICE MULTI AC042 AC042 — importado automaticamente do Google Drive." [ref=e173] [cursor=pointer]:
+            - /url: /products/cmnmi3lan0seo12tnwoghinvt
+            - img "AC042" [ref=e175]
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - generic [ref=e178]: AC042
+                - generic [ref=e179]: OFFICE MULTI
+              - paragraph [ref=e180]: AC042
+              - paragraph [ref=e181]: AC042 — importado automaticamente do Google Drive.
+          - link "AC064 AC064 OFFICE MULTI AC064 AC064 — importado automaticamente do Google Drive." [ref=e182] [cursor=pointer]:
+            - /url: /products/cmnmi3lah0sen12tnihn8bqnb
+            - img "AC064" [ref=e184]
+            - generic [ref=e185]:
+              - generic [ref=e186]:
+                - generic [ref=e187]: AC064
+                - generic [ref=e188]: OFFICE MULTI
+              - paragraph [ref=e189]: AC064
+              - paragraph [ref=e190]: AC064 — importado automaticamente do Google Drive.
+          - link "AC066 AC066 OFFICE MULTI AC066 AC066 — importado automaticamente do Google Drive." [ref=e191] [cursor=pointer]:
+            - /url: /products/cmnmi3lac0sem12tnxags0r5o
+            - img "AC066" [ref=e193]
+            - generic [ref=e194]:
+              - generic [ref=e195]:
+                - generic [ref=e196]: AC066
+                - generic [ref=e197]: OFFICE MULTI
+              - paragraph [ref=e198]: AC066
+              - paragraph [ref=e199]: AC066 — importado automaticamente do Google Drive.
+          - link "AC067 AC067 OFFICE MULTI AC067 AC067 — importado automaticamente do Google Drive." [ref=e200] [cursor=pointer]:
+            - /url: /products/cmnmi3la70sel12tnwn4ycgy8
+            - img "AC067" [ref=e202]
+            - generic [ref=e203]:
+              - generic [ref=e204]:
+                - generic [ref=e205]: AC067
+                - generic [ref=e206]: OFFICE MULTI
+              - paragraph [ref=e207]: AC067
+              - paragraph [ref=e208]: AC067 — importado automaticamente do Google Drive.
+          - link "AC069 AC069 OFFICE MULTI AC069 AC069 — importado automaticamente do Google Drive." [ref=e209] [cursor=pointer]:
+            - /url: /products/cmnmi3la10sek12tnb34fa2qo
+            - img "AC069" [ref=e211]
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - generic [ref=e214]: AC069
+                - generic [ref=e215]: OFFICE MULTI
+              - paragraph [ref=e216]: AC069
+              - paragraph [ref=e217]: AC069 — importado automaticamente do Google Drive.
+          - link "AC076 AC076 OFFICE MULTI AC076 AC076 — importado automaticamente do Google Drive." [ref=e218] [cursor=pointer]:
+            - /url: /products/cmnmi3l9x0sej12tnkm6rm9o8
+            - img "AC076" [ref=e220]
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]: AC076
+                - generic [ref=e224]: OFFICE MULTI
+              - paragraph [ref=e225]: AC076
+              - paragraph [ref=e226]: AC076 — importado automaticamente do Google Drive.
+          - link "AC102 OFFICE MULTI AC102 AC102 — importado automaticamente do Google Drive." [ref=e227] [cursor=pointer]:
+            - /url: /products/cmnmi3l9s0sei12tnxjk5wx5t
+            - img [ref=e229]
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - generic [ref=e235]: AC102
+                - generic [ref=e236]: OFFICE MULTI
+              - paragraph [ref=e237]: AC102
+              - paragraph [ref=e238]: AC102 — importado automaticamente do Google Drive.
+          - link "AC121 AC121 OFFICE MULTI AC121 AC121 — importado automaticamente do Google Drive." [ref=e239] [cursor=pointer]:
+            - /url: /products/cmnmi3l9n0seh12tnxz5bnp5k
+            - img "AC121" [ref=e241]
+            - generic [ref=e242]:
+              - generic [ref=e243]:
+                - generic [ref=e244]: AC121
+                - generic [ref=e245]: OFFICE MULTI
+              - paragraph [ref=e246]: AC121
+              - paragraph [ref=e247]: AC121 — importado automaticamente do Google Drive.
+          - link "AC123 OFFICE MULTI AC123 AC123 — importado automaticamente do Google Drive." [ref=e248] [cursor=pointer]:
+            - /url: /products/cmnmi3l9j0seg12tns02lhjf1
+            - img [ref=e250]
+            - generic [ref=e254]:
+              - generic [ref=e255]:
+                - generic [ref=e256]: AC123
+                - generic [ref=e257]: OFFICE MULTI
+              - paragraph [ref=e258]: AC123
+              - paragraph [ref=e259]: AC123 — importado automaticamente do Google Drive.
+          - link "AC124 AC124 OFFICE MULTI AC124 AC124 — importado automaticamente do Google Drive." [ref=e260] [cursor=pointer]:
+            - /url: /products/cmnmi3l9e0sef12tn3es8xouu
+            - img "AC124" [ref=e262]
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - generic [ref=e265]: AC124
+                - generic [ref=e266]: OFFICE MULTI
+              - paragraph [ref=e267]: AC124
+              - paragraph [ref=e268]: AC124 — importado automaticamente do Google Drive.
+        - generic [ref=e269]:
+          - generic [ref=e270]: Mostrando 1–20 de 536
+          - generic [ref=e271]:
+            - button "Anterior" [disabled] [ref=e272]
+            - button "Próximo" [ref=e273] [cursor=pointer]
+  - generic [ref=e274]:
+    - img [ref=e276]
+    - button "Open Tanstack query devtools" [ref=e324] [cursor=pointer]:
+      - img [ref=e325]
+  - alert [ref=e373]

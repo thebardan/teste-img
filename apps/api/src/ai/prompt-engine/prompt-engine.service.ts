@@ -140,21 +140,38 @@ Gere:
 Responda APENAS com JSON:
 {"headline": "...", "subtitle": "...", "benefits": ["...", "..."], "cta": "..."}`,
 
-  'visual-direction': `Você é um diretor de arte especializado em materiais comerciais premium.
-Crie uma direção visual para a lâmina de vendas do produto abaixo.
+  'visual-direction': `Você é um diretor de arte de uma agência criativa premiada, especializado em tech e inovação.
+Crie uma direção visual OUSADA e CONTEMPORÂNEA para a lâmina de vendas do produto abaixo.
 
 Produto: {{productName}}
 Categoria: {{category}}
 Headline: {{headline}}
 
-Gere:
-- Estilo visual (ex: clean, tech, lifestyle, bold)
-- Paleta de cores sugerida (2-3 cores hex)
-- Ambiente de composição para a imagem (ex: "produto em mesa clean com iluminação estúdio")
-- Tom emocional
+═══ ESTÉTICAS DISPONÍVEIS (escolha a que melhor combina com o produto) ═══
+
+• NEON TECH — Fundo escuro profundo (#0a0a0f, #0d0d1a) com acentos neon vibrantes (ciano #00f5ff, magenta #ff00c8, verde elétrico #00ff88). Gradientes luminosos, glow effects, sensação de interface futurista. Ideal para: periféricos gamer, áudio, gadgets.
+
+• CYBERPUNK — Preto com roxo intenso (#7b2ff7, #c850ff), azul elétrico (#0091ff), e rosa quente (#ff2d78). Atmosfera urbana noturna, luzes de LED, reflexos metálicos. Ideal para: smartphones, acessórios, wearables.
+
+• MINIMAL PREMIUM — Branco/cinza muito claro (#f8f8fa, #e8e8ec) com um único acento vibrante (azul #0066ff ou laranja #ff6b00). Clean extremo, espaço generoso, fotografia de produto impecável. Ideal para: notebooks, tablets, eletrodomésticos premium.
+
+• GRADIENTE AURORA — Gradientes fluidos e orgânicos entre 2-3 cores vibrantes (ex: #667eea → #764ba2, ou #f093fb → #f5576c, ou #4facfe → #00f2fe). Fundo escuro para o gradiente brilhar. Sensação de tecnologia humanizada. Ideal para: smart home, câmeras, fitness.
+
+• BOLD INDUSTRIAL — Amarelo/laranja industrial (#ffbe0b, #ff6b00) sobre preto (#111) ou grafite (#1a1a1a). Texturas sutis de metal ou concreto. Robustez, confiança. Ideal para: ferramentas, equipamentos, produtos robustos.
+
+• WARM LIFESTYLE — Tons terrosos aquecidos (#d4a574, #c17d52) com verde natural (#4a7c59) sobre fundos suaves (#faf5f0). Luz dourada, sensação caseira e acolhedora. Ideal para: cozinha, eletrodomésticos, casa.
+
+• ELECTRIC SPORT — Verde limão (#c5f82a), azul cobalto (#0055ff), ou laranja energético (#ff5e00) sobre preto. Dinâmico, energético, em movimento. Ideal para: fitness, esportes, smartwatches.
+
+═══ INSTRUÇÕES ═══
+1. Analise o produto e categoria para escolher a estética MAIS IMPACTANTE
+2. NÃO escolha sempre a mesma — varie conforme o produto
+3. As cores devem ser VIBRANTES e CONTEMPORÂNEAS — nada de paletas corporativas genéricas
+4. O "imageAmbiance" deve ser uma cena cinematográfica específica, não genérica
+5. O "emotionalTone" deve ser evocativo e preciso (ex: "poder silencioso", "adrenalina controlada", "futuro acessível")
 
 Responda APENAS com JSON:
-{"style": "...", "colors": ["#...", "#..."], "imageAmbiance": "...", "emotionalTone": "..."}`,
+{"style": "nome da estética escolhida", "colors": ["#hex1", "#hex2", "#hex3"], "imageAmbiance": "descrição cinematográfica da cena de composição", "emotionalTone": "tom emocional evocativo"}`,
 
   'image-generation': `Crie uma imagem comercial de alta qualidade para lâmina de vendas.
 

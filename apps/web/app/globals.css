@@ -2,36 +2,205 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ════════════════════════════════════════════════════════
+ *  MULTI AI STUDIO — Apple-Inspired Design System
+ *  Adapted from Figma DS spec (DESIGN.md)
+ *  Font: Inter (SF Pro substitute)
+ *  Philosophy: Binary contrast, single accent, reductive
+ * ════════════════════════════════════════════════════════
+ */
+
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --radius: 0.5rem;
+    /* ─── Surfaces ─── */
+    --color-black: #000000;
+    --color-white: #ffffff;
+    --color-light-gray: #f5f5f7;
+    --color-near-black: #1d1d1f;
+
+    /* ─── Interactive (the ONLY chromatic accent) ─── */
+    --color-blue: #0071e3;
+    --color-blue-link: #0066cc;
+    --color-blue-bright: #2997ff;
+
+    /* ─── Text ─── */
+    --color-text-primary: #1d1d1f;
+    --color-text-secondary: rgba(0, 0, 0, 0.8);
+    --color-text-tertiary: rgba(0, 0, 0, 0.48);
+    --color-text-on-dark: #ffffff;
+    --color-text-on-dark-secondary: rgba(255, 255, 255, 0.8);
+    --color-text-on-dark-tertiary: rgba(255, 255, 255, 0.48);
+
+    /* ─── Dark Surfaces ─── */
+    --color-dark-surface-1: #272729;
+    --color-dark-surface-2: #262628;
+    --color-dark-surface-3: #28282a;
+    --color-dark-surface-4: #2a2a2d;
+    --color-dark-surface-5: #242426;
+
+    /* ─── Button States ─── */
+    --color-btn-active: #ededf2;
+    --color-btn-default: #fafafc;
+    --color-overlay: rgba(210, 210, 215, 0.64);
+
+    /* ─── Feedback (minimal) ─── */
+    --color-success: #34c759;
+    --color-danger: #ff3b30;
+    --color-warning: #ff9500;
+
+    /* ─── Shadows ─── */
+    --shadow-card: 3px 5px 30px 0px rgba(0, 0, 0, 0.22);
+
+    /* ─── Radius ─── */
+    --radius-micro: 5px;
+    --radius-standard: 8px;
+    --radius-comfortable: 11px;
+    --radius-large: 12px;
+    --radius-pill: 980px;
+
+    /* ═══ Semantic Mapping ═══ */
+    --bg-canvas: var(--color-light-gray);
+    --bg-surface: var(--color-white);
+    --bg-elevated: var(--color-white);
+    --bg-immersive: var(--color-black);
+
+    --fg-default: var(--color-text-primary);
+    --fg-secondary: var(--color-text-secondary);
+    --fg-tertiary: var(--color-text-tertiary);
+    --fg-inverse: var(--color-white);
+
+    --accent: var(--color-blue);
+    --accent-link: var(--color-blue-link);
+
+    --border-default: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.04);
+
+    --ring: var(--color-blue);
+
+    /* Legacy compat */
+    --background: 0 0% 96%;
+    --foreground: 0 0% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --input: rgba(0, 0, 0, 0.08);
+    --primary: var(--color-blue);
+    --primary-foreground: var(--color-white);
+  }
+
+  .dark {
+    --bg-canvas: var(--color-black);
+    --bg-surface: var(--color-dark-surface-1);
+    --bg-elevated: var(--color-dark-surface-3);
+    --bg-immersive: var(--color-black);
+
+    --fg-default: var(--color-white);
+    --fg-secondary: var(--color-text-on-dark-secondary);
+    --fg-tertiary: var(--color-text-on-dark-tertiary);
+    --fg-inverse: var(--color-near-black);
+
+    --accent-link: var(--color-blue-bright);
+
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+
+    --shadow-card: 3px 5px 30px 0px rgba(0, 0, 0, 0.5);
+
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border-default);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--bg-canvas);
+    color: var(--fg-default);
+    font-family: var(--font-inter, 'Inter', -apple-system, 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif);
+    letter-spacing: -0.374px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.28px;
+    font-weight: 600;
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   ANIMATIONS
+   ════════════════════════════════════════════════════════ */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@layer utilities {
+  .animate-fade-in { animation: fade-in 0.4s ease-out both; }
+  .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-slide-down { animation: slide-down 0.4s ease-out both; }
+  .animate-scale-in { animation: scale-in 0.3s ease-out both; }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.04) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  /* Stagger children */
+  .stagger > * { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 80ms; }
+  .stagger > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger > *:nth-child(4) { animation-delay: 240ms; }
+  .stagger > *:nth-child(5) { animation-delay: 320ms; }
+  .stagger > *:nth-child(6) { animation-delay: 400ms; }
+  .stagger > *:nth-child(7) { animation-delay: 480ms; }
+  .stagger > *:nth-child(8) { animation-delay: 560ms; }
+
+  /* Glass navigation */
+  .glass-nav {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  /* Apple-style section backgrounds */
+  .section-dark { background-color: #000000; color: #ffffff; }
+  .section-light { background-color: #f5f5f7; color: #1d1d1f; }
 }

@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common'
 import { PresentationsService } from './presentations.service'
-import type { CreatePresentationDto } from './dto/create-presentation.dto'
+import { CreatePresentationDto } from './dto/create-presentation.dto'
 
 @Controller('presentations')
 export class PresentationsController {

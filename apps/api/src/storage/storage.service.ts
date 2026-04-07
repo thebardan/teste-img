@@ -112,6 +112,13 @@ export class StorageService implements OnModuleInit {
     return `${protocol}://${endpoint}:${port}/${this.bucket}/${key}`
   }
 
+  extractKey(urlOrKey: string): string {
+    const prefix = `/${this.bucket}/`
+    const idx = urlOrKey.indexOf(prefix)
+    if (idx !== -1) return urlOrKey.slice(idx + prefix.length)
+    return urlOrKey
+  }
+
   async getPresignedUrl(key: string, expirySeconds = 3600): Promise<string> {
     return this.client.presignedGetObject(this.bucket, key, expirySeconds)
   }

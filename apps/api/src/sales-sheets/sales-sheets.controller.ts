@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common'
 import { SalesSheetsService } from './sales-sheets.service'
 import { ArtComposerService } from './services/art-composer.service'
-import type { CreateSalesSheetDto } from './dto/create-sales-sheet.dto'
+import { CreateSalesSheetDto } from './dto/create-sales-sheet.dto'
 
 @Controller('sales-sheets')
 export class SalesSheetsController {
@@ -30,8 +30,23 @@ export class SalesSheetsController {
     return this.service.updateStatus(id, status)
   }
 
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id)
+  }
+
   @Post(':id/generate-art')
   generateArt(@Param('id') id: string, @Body() body: { prompt?: string }) {
     return this.artComposer.generateArt(id, body.prompt)
+  }
+
+  @Patch(':id/content')
+  updateContent(@Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.service.updateContent(id, body)
+  }
+
+  @Post(':id/regenerate-field')
+  regenerateField(@Param('id') id: string, @Body('field') field: string) {
+    return this.service.regenerateField(id, field)
   }
 }

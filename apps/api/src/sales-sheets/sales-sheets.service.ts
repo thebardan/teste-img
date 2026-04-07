@@ -163,4 +163,88 @@ export class SalesSheetsService {
   async updateStatus(id: string, status: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED') {
     return this.prisma.salesSheet.update({ where: { id }, data: { status } })
   }
+
+  async updateContent(id: string, partialContent: Record<string, any>) {
+    const sheet = await this.prisma.salesSheet.findUnique({
+      where: { id },
+      include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
+    })
+    if (!sheet) throw new NotFoundException(`SalesSheet ${id} not found`)
+    const version = sheet.versions[0]
+    if (!version) throw new NotFoundException('No version found')
+
+    const current = (version.content ?? {}) as Record<string, any>
+    const merged = { ...current, ...partialContent }
+
+    await this.prisma.salesSheetVersion.update({
+      where: { id: version.id },
+      data: { content: merged as any },
+    })
+
+    return { updated: true, content: merged }
+  }
+
+  async regenerateField(id: string, field: string) {
+    const sheet = await this.prisma.salesSheet.findUnique({
+      where: { id },
+      include: {
+        product: { include: { benefits: { orderBy: { order: 'asc' } }, specifications: true } },
+        versions: { orderBy: { versionNumber: 'desc' }, take: 1 },
+      },
+    })
+    if (!sheet) throw new NotFoundException(`SalesSheet ${id} not found`)
+    const product = sheet.product
+    const version = sheet.versions[0]
+    if (!version) throw new NotFoundException('No version found')
+
+    const current = (version.content ?? {}) as Record<string, any>
+
+    const specsText = product.specifications
+      .slice(0, 5)
+      .map((s) => `${s.key}: ${s.value}${s.unit ? ' ' + s.unit : ''}`)
+      .join(', ')
+
+    const copy = await this.copywriterAgent.generate({
+      productName: product.name,
+      sku: product.sku,
+      category: product.category,
+      description: product.description,
+      benefits: product.benefits.map((b) => b.text),
+      specs: specsText,
+      channel: 'Varejo',
+    })
+
+    const fieldMap: Record<string, any> = {
+      headline: copy.headline,
+      subtitle: copy.subtitle,
+      benefits: copy.benefits,
+      cta: copy.cta,
+    }
+
+    if (!(field in fieldMap)) {
+      return { error: `Field ${field} cannot be regenerated` }
+    }
+
+    const merged = { ...current, [field]: fieldMap[field] }
+    await this.prisma.salesSheetVersion.update({
+      where: { id: version.id },
+      data: { content: merged as any },
+    })
+
+    return { updated: true, field, value: fieldMap[field], content: merged }
+  }
+
+  async remove(id: string) {
+    const sheet = await this.prisma.salesSheet.findUnique({ where: { id } })
+    if (!sheet) throw new NotFoundException(`SalesSheet ${id} not found`)
+    // Cascade: delete versions, approvals, artifacts, inference logs
+    await this.prisma.$transaction([
+      this.prisma.inferenceLog.deleteMany({ where: { salesSheetVersion: { salesSheetId: id } } }),
+      this.prisma.exportedArtifact.deleteMany({ where: { salesSheetVersion: { salesSheetId: id } } }),
+      this.prisma.salesSheetVersion.deleteMany({ where: { salesSheetId: id } }),
+      this.prisma.approval.deleteMany({ where: { salesSheetId: id } }),
+      this.prisma.salesSheet.delete({ where: { id } }),
+    ])
+    return { deleted: true }
+  }
 }
