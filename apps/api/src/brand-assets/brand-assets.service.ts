@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { StorageService } from '../storage/storage.service'
 
 @Injectable()
 export class BrandAssetsService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(
+    private prisma: PrismaClient,
+    private storage: StorageService,
+  ) {}
 
   async findAll() {
     return this.prisma.brandAsset.findMany({
@@ -44,5 +48,42 @@ export class BrandAssetsService {
     }
 
     return best
+  }
+
+  async uploadAsset(
+    file: Express.Multer.File,
+    name: string,
+    bestOn: 'DARK' | 'LIGHT' | 'COLORED' | 'ANY' = 'ANY',
+    description?: string,
+  ) {
+    if (!file) throw new BadRequestException('No file provided')
+    if (!name) throw new BadRequestException('Name is required')
+
+    const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'png'
+    const format = ext.toUpperCase()
+    const storageKey = `brand-assets/${Date.now()}-${file.originalname}`
+
+    await this.storage.upload(storageKey, file.buffer, file.mimetype, 'image')
+    const url = await this.storage.getPresignedUrl(storageKey, 365 * 24 * 3600)
+
+    const asset = await this.prisma.brandAsset.create({
+      data: {
+        name,
+        type: 'LOGO',
+        url,
+        format,
+        bestOn,
+        description,
+        isActive: true,
+        rules: {
+          create: [
+            { condition: `bestOn === '${bestOn}'`, score: 100, notes: `Logo otimizada para fundo ${bestOn.toLowerCase()}` },
+          ],
+        },
+      },
+      include: { rules: true },
+    })
+
+    return asset
   }
 }

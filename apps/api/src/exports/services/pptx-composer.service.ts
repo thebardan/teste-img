@@ -1,6 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import PptxGenJS from 'pptxgenjs'
 
+/** Attempt to download image URL and return as base64 data URI, or null on failure */
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const contentType = res.headers.get('content-type') ?? 'image/png'
+    return `data:${contentType};base64,${buffer.toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
 export interface SlideContent {
   type: string
   title?: string
@@ -66,7 +79,7 @@ export class PptxComposerService {
       slide.background = { color: bgColor }
 
       if (zonesConfig) {
-        this.renderSlideWithZones(pptx, slide, content, zonesConfig, colors)
+        await this.renderSlideWithZones(pptx, slide, content, zonesConfig, colors)
       } else {
         this.renderSlideDefault(pptx, slide, content, colors)
       }
@@ -83,6 +96,14 @@ export class PptxComposerService {
     zonesConfig?: Record<string, ZoneConfig>,
     orientation: 'portrait' | 'landscape' = 'landscape',
   ): Promise<Buffer> {
+    // Pre-fetch logo and product images
+    const logoData = content.logoUrl ? await fetchImageAsBase64(content.logoUrl) : null
+    const productImages: string[] = []
+    const imageUrls: string[] = content.productImageUrls ?? (content.productImageUrl ? [content.productImageUrl] : [])
+    for (const url of imageUrls.slice(0, 4)) {
+      const data = await fetchImageAsBase64(url)
+      if (data) productImages.push(data)
+    }
     const pptx = new PptxGenJS()
     pptx.layout = 'LAYOUT_WIDE'
     pptx.title = productName
@@ -139,11 +160,19 @@ export class PptxComposerService {
             break
 
           case 'logoZone':
-            slide.addText('MULTILASER', {
-              x, y, w, h,
-              fontSize: 8, color: 'FFFFFF', bold: true, valign: 'middle',
-              charSpacing: 2,
-            })
+            if (logoData) {
+              slide.addImage({
+                data: logoData,
+                x: x + 0.1, y: y + 0.1, w: w - 0.2, h: h - 0.2,
+                sizing: { type: 'contain', w: w - 0.2, h: h - 0.2 },
+              })
+            } else {
+              slide.addText('MULTILASER', {
+                x, y, w, h,
+                fontSize: 8, color: 'FFFFFF', bold: true, valign: 'middle',
+                charSpacing: 2,
+              })
+            }
             break
 
           case 'qrZone':
@@ -154,15 +183,24 @@ export class PptxComposerService {
             break
 
           case 'imageZone':
-            slide.addShape(pptx.ShapeType.roundRect, {
-              x: x + 0.2, y: y + 0.2, w: w - 0.4, h: h - 0.4,
-              fill: { color: 'FFFFFF', transparency: 95 },
-              rectRadius: 0.1,
-            })
-            slide.addText(productName, {
-              x, y, w, h,
-              fontSize: 10, color: '888888', align: 'center', valign: 'middle',
-            })
+            if (productImages.length > 0) {
+              // Primary product image
+              slide.addImage({
+                data: productImages[0],
+                x: x + 0.2, y: y + 0.2, w: w - 0.4, h: h - 0.4,
+                sizing: { type: 'contain', w: w - 0.4, h: h - 0.4 },
+              })
+            } else {
+              slide.addShape(pptx.ShapeType.roundRect, {
+                x: x + 0.2, y: y + 0.2, w: w - 0.4, h: h - 0.4,
+                fill: { color: 'FFFFFF', transparency: 95 },
+                rectRadius: 0.1,
+              })
+              slide.addText(productName, {
+                x, y, w, h,
+                fontSize: 10, color: '888888', align: 'center', valign: 'middle',
+              })
+            }
             break
 
           default:
@@ -171,10 +209,18 @@ export class PptxComposerService {
       }
     } else {
       // Fallback default layout
-      slide.addText('MULTILASER', {
-        x: 0.5, y: 0.3, w: 3, h: 0.3,
-        fontSize: 8, color: 'F59E0B', bold: true, charSpacing: 3,
-      })
+      if (logoData) {
+        slide.addImage({
+          data: logoData,
+          x: 0.5, y: 0.2, w: 2, h: 0.5,
+          sizing: { type: 'contain', w: 2, h: 0.5 },
+        })
+      } else {
+        slide.addText('MULTILASER', {
+          x: 0.5, y: 0.3, w: 3, h: 0.3,
+          fontSize: 8, color: 'F59E0B', bold: true, charSpacing: 3,
+        })
+      }
       if (content.headline) {
         slide.addText(content.headline, {
           x: 0.5, y: 0.8, w: 12, h: 1.5,
@@ -204,7 +250,7 @@ export class PptxComposerService {
     return buffer
   }
 
-  private renderSlideWithZones(
+  private async renderSlideWithZones(
     pptx: PptxGenJS,
     slide: PptxGenJS.Slide,
     content: SlideContent,
@@ -212,6 +258,7 @@ export class PptxComposerService {
     colors: string[],
   ) {
     const accent = colors[1] ? hexColor(colors[1]) : 'F59E0B'
+    const logoData = content.logoUrl ? await fetchImageAsBase64(content.logoUrl) : null
 
     for (const [zoneName, zone] of Object.entries(zones)) {
       const { x, y, w, h } = resolveZone(zone)
@@ -263,10 +310,18 @@ export class PptxComposerService {
           break
 
         case 'logoZone':
-          slide.addText('MULTILASER', {
-            x, y, w, h,
-            fontSize: 8, color: '999999', bold: true, valign: 'middle', charSpacing: 2,
-          })
+          if (logoData) {
+            slide.addImage({
+              data: logoData,
+              x: x + 0.1, y: y + 0.1, w: w - 0.2, h: h - 0.2,
+              sizing: { type: 'contain', w: w - 0.2, h: h - 0.2 },
+            })
+          } else {
+            slide.addText('MULTILASER', {
+              x, y, w, h,
+              fontSize: 8, color: '999999', bold: true, valign: 'middle', charSpacing: 2,
+            })
+          }
           break
 
         case 'footerZone':

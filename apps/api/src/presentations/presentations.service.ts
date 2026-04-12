@@ -66,13 +66,19 @@ export class PresentationsService {
 
     const products = await this.prisma.product.findMany({
       where: { id: { in: dto.productIds } },
-      include: { benefits: { take: 3 }, specifications: { take: 4 } },
+      include: {
+        benefits: { take: 3 },
+        specifications: { take: 4 },
+        images: { orderBy: { order: 'asc' } },
+      },
     })
     if (!products.length) throw new Error('No valid products found')
 
     const client = dto.clientId
       ? await this.prisma.client.findUnique({ where: { id: dto.clientId } })
       : null
+
+    const allProductImages = products.flatMap((p) => p.images.map((img) => img.url))
 
     const productsText = products
       .map((p) => `${p.name} (${p.sku}): ${p.benefits.map((b) => b.text).join(', ')}`)
@@ -107,6 +113,8 @@ export class PresentationsService {
             body: enriched.body ?? slide.body ?? [],
             cta: slide.cta,
             logoAssetId: logoSelection.logoAssetId,
+            logoUrl: logoSelection.logoUrl,
+            productImageUrls: allProductImages,
             layout: { templateId, zones: template.zonesConfig },
           },
         }

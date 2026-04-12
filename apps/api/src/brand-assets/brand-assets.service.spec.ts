@@ -13,7 +13,7 @@ describe('BrandAssetsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    service = new BrandAssetsService(mockPrisma as any)
+    service = new BrandAssetsService(mockPrisma as any, {} as any)
   })
 
   describe('findOne', () => {
