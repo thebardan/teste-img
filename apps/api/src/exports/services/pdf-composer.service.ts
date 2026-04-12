@@ -1,7 +1,20 @@
 import { Injectable } from '@nestjs/common'
 import * as PDFDocument from 'pdfkit'
+import * as path from 'path'
+import * as fs from 'fs'
 import type { SlideContent } from './pptx-composer.service'
 import { QrCodeService } from './qrcode.service'
+
+/** Attempt to download image URL and return as Buffer, or null on failure */
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return Buffer.from(await res.arrayBuffer())
+  } catch {
+    return null
+  }
+}
 
 // A4 landscape: 841.89 x 595.28 pt  (pdfkit default pt unit)
 const W = 841.89
@@ -89,6 +102,7 @@ export class PdfComposerService {
     zonesConfig?: Record<string, ZoneConfig>,
     orientation: 'portrait' | 'landscape' = 'portrait',
     artImageBuffer?: Buffer | null,
+    visualSystem?: { palette: any; typography: any; background: any } | null,
   ): Promise<Buffer> {
     const isLandscape = orientation === 'landscape'
     const pageW = isLandscape ? SSL_W : SS_W
@@ -102,16 +116,18 @@ export class PdfComposerService {
     const chunks: Buffer[] = []
     doc.on('data', (c: Buffer) => chunks.push(c))
 
+    this.registerFonts(doc)
+
     // If we have the Gemini-generated art, use it as full-page image
     if (artImageBuffer) {
       try {
         doc.image(artImageBuffer, 0, 0, { width: pageW, height: pageH })
       } catch {
         // If image fails (corrupt/unsupported), fall back to composed layout
-        await this.renderFallback(doc, content, productName, zonesConfig, pageW, pageH)
+        await this.renderFallback(doc, content, productName, zonesConfig, pageW, pageH, visualSystem)
       }
     } else {
-      await this.renderFallback(doc, content, productName, zonesConfig, pageW, pageH)
+      await this.renderFallback(doc, content, productName, zonesConfig, pageW, pageH, visualSystem)
     }
 
     return new Promise((resolve, reject) => {
@@ -128,18 +144,31 @@ export class PdfComposerService {
     zonesConfig: Record<string, ZoneConfig> | undefined,
     pageW: number,
     pageH: number,
+    visualSystem?: { palette: any; typography: any; background: any } | null,
   ) {
-    const colors = content.visualDirection?.colors ?? ['#111827', '#1a2332']
-    doc.rect(0, 0, pageW, pageH).fill(colors[0])
-    if (colors[1]) {
-      doc.save()
-      doc.rect(pageW * 0.4, 0, pageW * 0.6, pageH).fill(colors[1])
-      doc.restore()
+    if (visualSystem?.background?.colors?.length) {
+      // Render gradient background using visualSystem colors
+      const bgColors: string[] = visualSystem.background.colors
+      doc.rect(0, 0, pageW, pageH).fill(bgColors[0])
+      if (bgColors.length > 1) {
+        // Approximate gradient with a second rect covering the right portion
+        doc.save()
+        doc.rect(pageW * 0.4, 0, pageW * 0.6, pageH).fill(bgColors[bgColors.length - 1])
+        doc.restore()
+      }
+    } else {
+      const colors = content.visualDirection?.colors ?? ['#111827', '#1a2332']
+      doc.rect(0, 0, pageW, pageH).fill(colors[0])
+      if (colors[1]) {
+        doc.save()
+        doc.rect(pageW * 0.4, 0, pageW * 0.6, pageH).fill(colors[1])
+        doc.restore()
+      }
     }
     if (zonesConfig) {
-      await this.renderSalesSheetWithZones(doc, content, productName, zonesConfig, pageW, pageH)
+      await this.renderSalesSheetWithZones(doc, content, productName, zonesConfig, pageW, pageH, visualSystem)
     } else {
-      await this.renderSalesSheetDefault(doc, content, productName, pageW, pageH)
+      await this.renderSalesSheetDefault(doc, content, productName, pageW, pageH, visualSystem)
     }
   }
 
@@ -152,27 +181,51 @@ export class PdfComposerService {
     zones: Record<string, ZoneConfig>,
     pageW: number,
     pageH: number,
+    visualSystem?: { palette: any; typography: any; background: any } | null,
   ) {
+    const displayFont = this.resolveFont(visualSystem?.typography?.displayFont) ?? 'Helvetica-Bold'
+    const bodyFont = this.resolveFont(visualSystem?.typography?.bodyFont) ?? 'Helvetica'
+    const textColor = visualSystem?.palette?.text ?? '#FFFFFF'
+    const mutedColor = visualSystem?.palette?.muted ?? '#D0D0D0'
+    const accentColor = visualSystem?.palette?.accent ?? '#FFFFFF'
+    const bgColor = visualSystem?.palette?.background ?? '#111827'
+    const headlineSize = visualSystem?.typography?.scale?.headline ?? 22
+    const bodySize = visualSystem?.typography?.scale?.body ?? 11
+    const labelSize = visualSystem?.typography?.scale?.label ?? 7
+    // Pre-fetch logo and product images
+    const logoBuffer = content.logoUrl ? await fetchImageBuffer(content.logoUrl) : null
+    const productImages: Buffer[] = []
+    const imageUrls: string[] = content.productImageUrls ?? (content.productImageUrl ? [content.productImageUrl] : [])
+    for (const url of imageUrls.slice(0, 4)) {
+      const buf = await fetchImageBuffer(url)
+      if (buf) productImages.push(buf)
+    }
+
     for (const [zoneName, zone] of Object.entries(zones)) {
       const { x, y, w, h } = resolveZone(zone, pageW, pageH)
 
       switch (zoneName) {
         case 'headlineZone':
           if (content.headline) {
-            doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold')
-               .text(content.headline, x + 8, y + 8, { width: w - 16, lineGap: 3 })
+            this.drawTextWithShadow(doc, content.headline, x + 8, y + 8, {
+              font: displayFont,
+              fontSize: headlineSize,
+              color: textColor,
+              width: w - 16,
+              lineGap: 3,
+            })
           }
           if (content.subtitle) {
-            doc.fillColor('#E0E0E0').fontSize(11).font('Helvetica')
+            doc.fillColor(mutedColor).fontSize(bodySize).font(bodyFont)
                .text(content.subtitle, x + 8, doc.y + 6, { width: w - 16 })
           }
           break
 
         case 'benefitsZone':
-          doc.fillColor('#D0D0D0').fontSize(7).font('Helvetica-Bold')
+          doc.fillColor(mutedColor).fontSize(labelSize).font(displayFont)
              .text('BENEFICIOS', x + 8, y + 6, { characterSpacing: 1.5 })
           if (content.benefits?.length) {
-            doc.fillColor('#FFFFFF').fontSize(11).font('Helvetica')
+            doc.fillColor(textColor).fontSize(bodySize).font(bodyFont)
             for (const b of content.benefits) {
               doc.text(`▸  ${b}`, x + 8, doc.y + 6, { width: w - 16, lineGap: 2 })
             }
@@ -183,19 +236,30 @@ export class PdfComposerService {
           if (content.cta) {
             const ctaW = Math.min(w - 16, 200)
             const ctaX = x + (w - ctaW) / 2
-            doc.roundedRect(ctaX, y + (h - 28) / 2, ctaW, 28, 6).fill('#FFFFFF')
-            doc.fillColor('#111827').fontSize(11).font('Helvetica-Bold')
+            doc.roundedRect(ctaX, y + (h - 28) / 2, ctaW, 28, 6).fill(accentColor)
+            doc.fillColor(bgColor).fontSize(bodySize).font(displayFont)
                .text(content.cta, ctaX, y + (h - 28) / 2 + 8, { width: ctaW, align: 'center' })
           }
           break
 
         case 'logoZone':
-          // Logo placeholder text
-          doc.save()
-          doc.roundedRect(x + 4, y + (h - 24) / 2, 60, 24, 4).fill('rgba(255,255,255,0.15)')
-          doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold')
-             .text('MULTILASER', x + 8, y + (h - 8) / 2, { width: w - 8 })
-          doc.restore()
+          if (logoBuffer) {
+            try {
+              const logoSize = Math.min(w - 8, h - 4)
+              doc.image(logoBuffer, x + 4, y + (h - logoSize * 0.6) / 2, {
+                fit: [w - 8, h - 4],
+              })
+            } catch {
+              doc.fillColor(textColor).fontSize(8).font(displayFont)
+                 .text('MULTILASER', x + 8, y + (h - 8) / 2, { width: w - 8 })
+            }
+          } else {
+            doc.save()
+            doc.roundedRect(x + 4, y + (h - 24) / 2, 60, 24, 4).fill('rgba(255,255,255,0.15)')
+            doc.fillColor(textColor).fontSize(8).font(displayFont)
+               .text('MULTILASER', x + 8, y + (h - 8) / 2, { width: w - 8 })
+            doc.restore()
+          }
           break
 
         case 'qrZone':
@@ -211,25 +275,35 @@ export class PdfComposerService {
           break
 
         case 'imageZone':
-          // Product image placeholder area - render a subtle card
-          doc.save()
-          doc.roundedRect(x + 8, y + 8, w - 16, h - 16, 8).fill('rgba(255,255,255,0.05)')
-          doc.fillColor('#666666').fontSize(10).font('Helvetica')
-             .text(productName, x + 8, y + h / 2 - 6, { width: w - 16, align: 'center' })
-          doc.restore()
+          if (productImages.length > 0) {
+            try {
+              doc.image(productImages[0], x + 8, y + 8, {
+                fit: [w - 16, h - 16],
+                align: 'center',
+                valign: 'center',
+              })
+            } catch {
+              doc.fillColor('#666666').fontSize(10).font(bodyFont)
+                 .text(productName, x + 8, y + h / 2 - 6, { width: w - 16, align: 'center' })
+            }
+          } else {
+            doc.save()
+            doc.roundedRect(x + 8, y + 8, w - 16, h - 16, 8).fill('rgba(255,255,255,0.05)')
+            doc.fillColor('#666666').fontSize(10).font(bodyFont)
+               .text(productName, x + 8, y + h / 2 - 6, { width: w - 16, align: 'center' })
+            doc.restore()
+          }
           break
 
         case 'specsZone':
-          doc.fillColor('#D0D0D0').fontSize(7).font('Helvetica-Bold')
+          doc.fillColor(mutedColor).fontSize(labelSize).font(displayFont)
              .text('ESPECIFICACOES', x + 8, y + 6, { characterSpacing: 1.5 })
-          doc.fillColor('#999999').fontSize(9).font('Helvetica')
+          doc.fillColor('#999999').fontSize(9).font(bodyFont)
              .text('Consulte ficha tecnica completa', x + 8, doc.y + 6, { width: w - 16 })
           break
 
         default:
-          // Render zone name as subtle label
-          doc.fillColor('#444444').fontSize(7).font('Helvetica')
-             .text(zoneName.replace('Zone', ''), x + 4, y + 4)
+          // Skip unknown zones — do not render labels in export
           break
       }
     }
@@ -241,39 +315,61 @@ export class PdfComposerService {
     productName: string,
     pageW: number,
     pageH: number,
+    visualSystem?: { palette: any; typography: any; background: any } | null,
   ) {
-    const ACCENT = '#F59E0B'
-    const TEXT_PRIMARY = '#F9FAFB'
-    const TEXT_MUTED = '#9CA3AF'
+    const ACCENT = visualSystem?.palette?.accent ?? '#F59E0B'
+    const TEXT_PRIMARY = visualSystem?.palette?.text ?? '#F9FAFB'
+    const TEXT_MUTED = visualSystem?.palette?.muted ?? '#9CA3AF'
+    const BG_DARK = visualSystem?.palette?.background ?? '#111827'
+    const displayFont = this.resolveFont(visualSystem?.typography?.displayFont) ?? 'Helvetica-Bold'
+    const bodyFont = this.resolveFont(visualSystem?.typography?.bodyFont) ?? 'Helvetica'
+    const headlineSize = visualSystem?.typography?.scale?.headline ?? 26
+    const bodySize = visualSystem?.typography?.scale?.body ?? 12
+    const labelSize = visualSystem?.typography?.scale?.label ?? 8
 
     // Accent strip
     doc.rect(0, 0, pageW, 5).fill(ACCENT)
     doc.rect(0, 0, 5, pageH).fill(ACCENT)
 
     // Brand
-    doc.fillColor(ACCENT).fontSize(8).font('Helvetica-Bold')
-       .text('MULTILASER', 24, 22, { characterSpacing: 3 })
-    doc.fillColor(TEXT_MUTED).fontSize(10).font('Helvetica')
+    const defaultLogoBuffer = content.logoUrl ? await fetchImageBuffer(content.logoUrl) : null
+    if (defaultLogoBuffer) {
+      try {
+        doc.image(defaultLogoBuffer, 24, 16, { fit: [120, 30] })
+      } catch {
+        doc.fillColor(ACCENT).fontSize(8).font(displayFont)
+           .text('MULTILASER', 24, 22, { characterSpacing: 3 })
+      }
+    } else {
+      doc.fillColor(ACCENT).fontSize(8).font(displayFont)
+         .text('MULTILASER', 24, 22, { characterSpacing: 3 })
+    }
+    doc.fillColor(TEXT_MUTED).fontSize(10).font(bodyFont)
        .text(productName, 24, 36)
 
     doc.rect(24, 52, pageW - 48, 1).fill('#374151')
 
     if (content.headline) {
-      doc.fillColor(TEXT_PRIMARY).fontSize(26).font('Helvetica-Bold')
-         .text(content.headline, 24, 64, { width: pageW - 48, lineGap: 4 })
+      this.drawTextWithShadow(doc, content.headline, 24, 64, {
+        font: displayFont,
+        fontSize: headlineSize,
+        color: TEXT_PRIMARY,
+        width: pageW - 48,
+        lineGap: 4,
+      })
     }
 
     if (content.subtitle) {
-      doc.fillColor(ACCENT).fontSize(13).font('Helvetica-Oblique')
+      doc.fillColor(ACCENT).fontSize(13).font(bodyFont)
          .text(content.subtitle, 24, doc.y + 10, { width: pageW - 48 })
     }
 
     doc.rect(24, doc.y + 14, pageW - 48, 1).fill('#374151')
 
     if (content.benefits?.length) {
-      doc.fillColor(TEXT_MUTED).fontSize(8).font('Helvetica-Bold')
+      doc.fillColor(TEXT_MUTED).fontSize(labelSize).font(displayFont)
          .text('BENEFICIOS', 24, doc.y + 8, { characterSpacing: 1.5 })
-      doc.fillColor(TEXT_PRIMARY).fontSize(12).font('Helvetica')
+      doc.fillColor(TEXT_PRIMARY).fontSize(bodySize).font(bodyFont)
       for (const b of content.benefits) {
         doc.text(`▸  ${b}`, 24, doc.y + 8, { width: pageW - 48, lineGap: 2 })
       }
@@ -282,14 +378,14 @@ export class PdfComposerService {
     if (content.cta) {
       const ctaY = pageH - 120
       doc.roundedRect(24, ctaY, pageW - 48, 36, 8).fill(ACCENT)
-      doc.fillColor('#111827').fontSize(13).font('Helvetica-Bold')
+      doc.fillColor(BG_DARK).fontSize(13).font(displayFont)
          .text(content.cta, 24, ctaY + 10, { width: pageW - 48, align: 'center' })
     }
 
     // Footer
     doc.rect(0, pageH - 44, pageW, 44).fill('#1F2937')
     doc.rect(0, pageH - 44, pageW, 1).fill(ACCENT)
-    doc.fillColor(TEXT_MUTED).fontSize(8).font('Helvetica')
+    doc.fillColor(TEXT_MUTED).fontSize(8).font(bodyFont)
        .text('multilaser.com.br', 24, pageH - 28)
   }
 
@@ -373,6 +469,78 @@ export class PdfComposerService {
       doc.fillColor('#111827').fontSize(11).font('Helvetica-Bold')
          .text(content.cta, 36, ctaY + 8, { width: 180, align: 'center' })
     }
+  }
+
+  /** Register all available TTF fonts from the assets/fonts directory */
+  private registerFonts(doc: PDFKit.PDFDocument): void {
+    const fontsDir = path.join(__dirname, '..', '..', '..', 'assets', 'fonts')
+    const fontFiles: Record<string, string> = {
+      'Inter': 'Inter-Variable.ttf',
+      'Montserrat': 'Montserrat-Variable.ttf',
+      'PlayfairDisplay': 'PlayfairDisplay-Variable.ttf',
+      'Oswald': 'Oswald-Variable.ttf',
+      'Poppins': 'Poppins-SemiBold.ttf',
+      'Nunito': 'Nunito-Variable.ttf',
+      'SourceSans3': 'SourceSans3-Variable.ttf',
+      'OpenSans': 'OpenSans-Variable.ttf',
+      'DMSerifDisplay': 'DMSerifDisplay-Regular.ttf',
+      'DMSans': 'DMSans-Variable.ttf',
+    }
+    for (const [fontName, fileName] of Object.entries(fontFiles)) {
+      const fontPath = path.join(fontsDir, fileName)
+      if (fs.existsSync(fontPath)) {
+        try {
+          doc.registerFont(fontName, fontPath)
+        } catch {
+          // Skip fonts that fail to register
+        }
+      }
+    }
+  }
+
+  /**
+   * Resolve a display/body font name from visualSystem to a registered font name.
+   * Falls back to null when name does not match any registered font.
+   */
+  private resolveFont(fontName?: string | null): string | null {
+    if (!fontName) return null
+    const knownFonts: Record<string, string> = {
+      Inter: 'Inter',
+      Montserrat: 'Montserrat',
+      'Playfair Display': 'PlayfairDisplay',
+      PlayfairDisplay: 'PlayfairDisplay',
+      Oswald: 'Oswald',
+      Poppins: 'Poppins',
+      Nunito: 'Nunito',
+      'Source Sans 3': 'SourceSans3',
+      SourceSans3: 'SourceSans3',
+      'Open Sans': 'OpenSans',
+      OpenSans: 'OpenSans',
+      'DM Serif Display': 'DMSerifDisplay',
+      DMSerifDisplay: 'DMSerifDisplay',
+      'DM Sans': 'DMSans',
+      DMSans: 'DMSans',
+    }
+    return knownFonts[fontName] ?? null
+  }
+
+  /**
+   * Draw text with a subtle shadow effect (render shadow offset first, then actual text).
+   */
+  private drawTextWithShadow(
+    doc: PDFKit.PDFDocument,
+    text: string,
+    x: number,
+    y: number,
+    opts: { font: string; fontSize: number; color: string; width?: number; lineGap?: number; align?: string },
+  ): void {
+    const { font, fontSize, color, width, lineGap, align } = opts
+    // Shadow pass: 1px offset, dark color at low opacity
+    doc.fillColor('#000000', 0.25).fontSize(fontSize).font(font)
+       .text(text, x + 1, y + 1, { width, lineGap, align: align as any })
+    // Actual text pass
+    doc.fillColor(color).fontSize(fontSize).font(font)
+       .text(text, x, y, { width, lineGap, align: align as any })
   }
 
   private typeLabel(type: string): string {
