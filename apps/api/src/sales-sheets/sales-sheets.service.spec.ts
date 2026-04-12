@@ -54,13 +54,24 @@ const mockBrandGuardian = {
   }),
 }
 
-const mockVisualDirector = {
-  direct: jest.fn().mockResolvedValue({
-    style: 'modern',
-    colors: ['#000', '#fff'],
-    imageAmbiance: 'studio',
-    emotionalTone: 'premium',
-    suggestedBackground: 'DARK',
+const mockCopyDirector = {
+  generate: jest.fn().mockResolvedValue({
+    variations: [
+      { approach: 'emotional', headline: 'Som que Transforma', subtitle: 'Áudio premium', benefits: ['Som surround', 'Bateria 30h'], cta: 'Compre agora' },
+      { approach: 'rational', headline: 'Headset Pro 250g', subtitle: 'Leve e potente', benefits: ['Som surround', 'Bateria 30h'], cta: 'Saiba mais' },
+      { approach: 'aspirational', headline: 'Seu Próximo Nível', subtitle: 'Para quem exige o melhor', benefits: ['Som surround', 'Bateria 30h'], cta: 'Descubra' },
+    ],
+    selectedIndex: 0,
+    toneProfile: { category: 'Áudio', channel: 'Varejo', voice: 'Melômano exigente' },
+  }),
+}
+
+const mockVisualSystem = {
+  generate: jest.fn().mockResolvedValue({
+    palette: { dominant: '#0071e3', accent: '#ff6b00', neutral: '#666', background: '#111', backgroundSecondary: '#222', text: '#fff', textSecondary: '#ccc' },
+    typography: { displayFont: 'Montserrat', bodyFont: 'Inter', scale: { hero: 39, headline: 31, subtitle: 25, body: 20, caption: 16, micro: 13 }, ratio: 1.25 },
+    background: { type: 'gradient-linear', colors: ['#111', '#222', '#0071e3'], angle: 135, overlay: { color: '#000', opacity: 0.3 }, texture: 'none' },
+    mood: { style: 'modern tech', emotionalTone: 'premium', darkMode: true },
   }),
 }
 
@@ -73,9 +84,10 @@ describe('SalesSheetsService', () => {
     jest.clearAllMocks()
     service = new SalesSheetsService(
       mockPrisma as any,
-      mockCopywriter as any,
+      mockCopyDirector as any,
+      mockVisualSystem as any,
       mockBrandGuardian as any,
-      mockVisualDirector as any,
+      mockCopywriter as any,
     )
   })
 
@@ -119,9 +131,10 @@ describe('SalesSheetsService', () => {
       } as any)
 
       expect(result.salesSheet.id).toBe('ss-new')
-      expect(result.copy.headline).toBe('Som que Transforma')
+      expect(result.content.variations).toHaveLength(3)
+      expect(result.content.variations[0].copy.headline).toBeDefined()
+      expect(result.content.selectedVariation).toBe(0)
       expect(result.logoSelection.logoAssetId).toBe('logo-dark')
-      expect(result.visual.suggestedBackground).toBe('DARK')
     })
 
     it('throws NotFoundException when product does not exist', async () => {
@@ -131,9 +144,9 @@ describe('SalesSheetsService', () => {
       ).rejects.toThrow(NotFoundException)
     })
 
-    it('calls SalesCopywriterAgent with product data', async () => {
+    it('calls CopyDirector with product data', async () => {
       await service.generate({ productId: 'prod-1' } as any)
-      expect(mockCopywriter.generate).toHaveBeenCalledWith(
+      expect(mockCopyDirector.generate).toHaveBeenCalledWith(
         expect.objectContaining({
           productName: 'Multi Headset Pro',
           sku: 'HC123',
@@ -142,11 +155,19 @@ describe('SalesSheetsService', () => {
       )
     })
 
+    it('calls VisualSystemAgent', async () => {
+      await service.generate({ productId: 'prod-1' } as any)
+      expect(mockVisualSystem.generate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productName: 'Multi Headset Pro',
+          category: 'Áudio',
+        }),
+      )
+    })
+
     it('calls BrandGuardianAgent to select logo', async () => {
       await service.generate({ productId: 'prod-1' } as any)
-      expect(mockBrandGuardian.selectLogo).toHaveBeenCalledWith(
-        expect.objectContaining({ background: 'DARK' }),
-      )
+      expect(mockBrandGuardian.selectLogo).toHaveBeenCalled()
     })
   })
 

@@ -213,42 +213,64 @@ Tipografia OBRIGATÓRIA:
     if (!zonesConfig) {
       return isHorizontal
         ? `Layout horizontal padrão:
-- ESQUERDA (60%): fotografia do produto em cenário de uso
-- DIREITA (40%): headline no topo, benefícios no meio, logo + QR code no canto inferior direito`
+- ESQUERDA: fotografia do produto em cenário de uso (área principal)
+- DIREITA: espaço reservado para headline no topo, benefícios no meio, logo e QR code no canto inferior direito`
         : `Layout vertical padrão:
-- TOPO (50%): fotografia do produto em cenário de uso
-- INFERIOR (50%): headline, benefícios, CTA, logo + QR code no rodapé`
+- TOPO: fotografia do produto em cenário de uso (área principal)
+- INFERIOR: espaço reservado para headline, benefícios, CTA, logo e QR code no rodapé`
     }
 
+    // Describe zones using natural spatial terms instead of raw percentages
+    // to prevent Gemini from rendering percentage markers on the image
     const zones: string[] = []
     if (zonesConfig.imageZone) {
-      const z = zonesConfig.imageZone
-      zones.push(`- ZONA DA IMAGEM: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — foto do produto aqui`)
+      const pos = this.describeZonePosition(zonesConfig.imageZone)
+      zones.push(`- ZONA DA IMAGEM: ${pos} — foto do produto aqui`)
     }
     if (zonesConfig.headlineZone) {
-      const z = zonesConfig.headlineZone
-      zones.push(`- ZONA DO HEADLINE: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — texto principal`)
+      const pos = this.describeZonePosition(zonesConfig.headlineZone)
+      zones.push(`- ZONA DO HEADLINE: ${pos} — texto principal`)
     }
     if (zonesConfig.benefitsZone) {
-      const z = zonesConfig.benefitsZone
-      zones.push(`- ZONA DE BENEFÍCIOS: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — lista de benefícios`)
+      const pos = this.describeZonePosition(zonesConfig.benefitsZone)
+      zones.push(`- ZONA DE BENEFÍCIOS: ${pos} — lista de benefícios`)
     }
     if (zonesConfig.logoZone) {
-      const z = zonesConfig.logoZone
-      zones.push(`- ZONA DO LOGO: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — logo Multilaser`)
+      const pos = this.describeZonePosition(zonesConfig.logoZone)
+      zones.push(`- ZONA DO LOGO: ${pos} — logo Multilaser`)
     }
     if (zonesConfig.qrZone) {
-      const z = zonesConfig.qrZone
-      zones.push(`- ZONA DO QR CODE: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — QR code`)
+      const pos = this.describeZonePosition(zonesConfig.qrZone)
+      zones.push(`- ZONA DO QR CODE: ${pos} — QR code`)
     }
     if (zonesConfig.ctaZone) {
-      const z = zonesConfig.ctaZone
-      zones.push(`- ZONA DO CTA: posição (${z.x}, ${z.y}), tamanho ${z.width} × ${z.height} — call-to-action`)
+      const pos = this.describeZonePosition(zonesConfig.ctaZone)
+      zones.push(`- ZONA DO CTA: ${pos} — call-to-action`)
     }
 
-    return `Distribuição de zonas no canvas (coordenadas relativas):
+    return `Distribuição de zonas no canvas:
 ${zones.join('\n')}
-Respeite essas posições ao compor a imagem — o produto vai na zona da imagem, textos nas suas respectivas zonas.`
+Respeite essas posições ao compor a imagem — o produto vai na zona da imagem, textos nas suas respectivas zonas.
+IMPORTANTE: NÃO renderize coordenadas, porcentagens, marcações ou guias visuais na imagem. A imagem deve ser limpa e pronta para uso comercial.`
+  }
+
+  /** Convert raw zone coordinates into natural spatial descriptions */
+  private describeZonePosition(zone: { x: string | number; y: string | number; width: string | number; height: string | number }): string {
+    const x = this.pctVal(zone.x)
+    const y = this.pctVal(zone.y)
+    const w = this.pctVal(zone.width)
+    const h = this.pctVal(zone.height)
+
+    const horizontal = x < 20 ? 'lado esquerdo' : x > 60 ? 'lado direito' : 'centro'
+    const vertical = y < 20 ? 'parte superior' : y > 60 ? 'parte inferior' : 'centro vertical'
+    const size = w > 50 && h > 50 ? 'área grande' : w > 30 || h > 30 ? 'área média' : 'área pequena'
+
+    return `${horizontal}, ${vertical} (${size})`
+  }
+
+  private pctVal(val: string | number): number {
+    if (typeof val === 'number') return val
+    return parseFloat(val) || 0
   }
 
   private suggestScene(category: string, productName: string): string {

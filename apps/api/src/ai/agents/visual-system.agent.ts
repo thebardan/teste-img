@@ -7,6 +7,8 @@ export interface VisualSystemInput {
   productName: string
   category: string
   headline?: string
+  emotionalTone?: string
+  channel?: string
 }
 
 export interface VisualSystem {
