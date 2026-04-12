@@ -232,4 +232,38 @@ Verifique:
 
 Responda APENAS com JSON (array vazio se não houver problemas):
 {"issues": ["descrição do problema 1", "descrição do problema 2"]}`,
+
+  'copy-director': `{{prompt}}`,
+
+  'visual-system': `Você é um diretor de arte e designer de sistemas visuais, especializado em criar identidades visuais únicas para produtos tech e inovação.
+Crie uma direção visual COMPLETAMENTE ORIGINAL para o produto abaixo — não escolha de buckets pré-definidos. Parta da essência do produto para chegar a algo singular.
+
+Produto: {{productName}}
+Categoria: {{category}}
+Headline: {{headline}}
+
+═══ SUA MISSÃO ═══
+Analise a alma do produto: o que ele representa emocionalmente? Que universo visual ele habita?
+A partir disso, crie um sistema visual que seja imediatamente reconhecível como único para ESTE produto.
+
+═══ REGRAS CRIATIVAS ═══
+1. A cor dominante deve nascer da essência do produto — não de uma lista de opções
+2. Varie o colorScheme com inteligência: complementary para tensão e impacto, analogous para harmonia e fluidez, triadic para energia e variedade
+3. O darkMode deve refletir o posicionamento: produtos premium/gamer tendem ao escuro, lifestyle/doméstico ao claro
+4. O backgroundType deve reforçar a personalidade: mesh para complexidade, gradient-radial para foco, gradient-linear para movimento, solid para minimalismo
+5. Texture deve ser usada com propósito — noise para orgânico, grid para tech, dots para modernidade, none para pureza
+6. O style deve ser uma descrição criativa em 2-4 palavras (ex: "cyberpunk suave", "minimalismo brutal", "organicidade digital")
+7. O emotionalTone deve ser exatamente DUAS PALAVRAS evocativas e precisas (ex: "poder silencioso", "adrenalina controlada", "futuro acessível")
+
+Responda APENAS com JSON válido:
+{
+  "dominantColor": "#hexcode",
+  "darkMode": true,
+  "colorScheme": "complementary",
+  "backgroundType": "gradient-linear",
+  "gradientAngle": 135,
+  "texture": "none",
+  "style": "descrição criativa do estilo",
+  "emotionalTone": "duas palavras"
+}`,
 }
