@@ -26,9 +26,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useBrandAssets } from '@/lib/hooks/use-brand-assets'
+import { Modal, ModalTitle, ModalFooter } from '@/components/ui/modal'
+import { VariationSelector } from '@/components/ui/variation-selector'
 import {
   ArrowLeft, Sparkles, Palette, Download, FileText, Wand2,
-  ImageIcon, Trash2, Eye, ChevronDown, ChevronUp,
+  ImageIcon, Trash2, Eye, ChevronDown, ChevronUp, Image, RefreshCw,
 } from 'lucide-react'
 
 const statusVariantMap: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
@@ -87,6 +90,21 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const orientation = templateName.includes('vertical') || templateName.includes('a4') ? 'portrait' : 'landscape'
   const productImage = sheet.product?.images?.find((img: any) => img.isPrimary)?.url
     ?? sheet.product?.images?.[0]?.url
+  const allProductImages = sheet.product?.images?.map((img: any) => img.url) ?? content?.productImageUrls ?? []
+  const productSpecs = sheet.product?.specifications?.slice(0, 5).map((s: any) => ({
+    key: s.key, value: s.value, unit: s.unit,
+  })) ?? []
+
+  // Designer Engine: support variations
+  const hasVariations = Array.isArray(content?.variations) && content.variations.length > 0
+  const selectedIdx = content?.selectedVariation ?? 0
+  const activeVariation = hasVariations ? content.variations[selectedIdx] : null
+  // If we have a selected variation, use its copy for the canvas
+  const activeContent = activeVariation
+    ? { ...content, headline: activeVariation.copy.headline, subtitle: activeVariation.copy.subtitle, benefits: activeVariation.copy.benefits, cta: activeVariation.copy.cta }
+    : content
+  // Use variation's layout zones if available, otherwise template zones
+  const activeZones = activeVariation?.layout?.zones ?? zonesConfig
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl animate-slide-up">
@@ -114,11 +132,23 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
         </Button>
       </div>
 
+      {/* Variation Selector — Designer Engine */}
+      {hasVariations && (
+        <div className="mb-6">
+          <h2 className="text-caption font-semibold text-fg-secondary mb-3">Escolha uma variação</h2>
+          <VariationSelector
+            variations={content.variations}
+            selectedIndex={selectedIdx}
+            onSelect={(idx) => updateContent({ id, content: { selectedVariation: idx } })}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
         {/* Left: Canvas Preview */}
         <div className="space-y-6">
           {/* Live Preview */}
-          {content && zonesConfig && (
+          {activeContent && (activeZones || zonesConfig) && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -136,10 +166,14 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   isRegenerating={regenerating}
                 />
                 <SalesSheetCanvas
-                  content={content}
-                  zonesConfig={zonesConfig}
+                  content={activeContent}
+                  zonesConfig={activeZones ?? zonesConfig}
                   productImageUrl={productImage}
+                  productImageUrls={allProductImages}
+                  productSpecs={productSpecs}
                   orientation={orientation as 'landscape' | 'portrait'}
+                  editable
+                  onContentChange={(field, value) => updateContent({ id, content: { [field]: value } })}
                 />
               </CardContent>
             </Card>
@@ -228,6 +262,20 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
             </CardContent>
           </Card>
 
+          {/* Logo Selector */}
+          <LogoSelectorPanel
+            currentLogoUrl={content?.logoUrl}
+            onSelect={(logoUrl, logoAssetId) => updateContent({ id, content: { logoUrl, logoAssetId } })}
+          />
+
+          {/* Visual Direction Editor */}
+          {content?.visualDirection && (
+            <VisualDirectionPanel
+              visualDirection={content.visualDirection}
+              onUpdate={(vd) => updateContent({ id, content: { visualDirection: vd } })}
+            />
+          )}
+
           {/* Collapsible Details */}
           <Card>
             <button
@@ -262,33 +310,11 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   )}
                 </div>
 
-                {/* Visual Direction */}
-                {content.visualDirection && (
-                  <div>
-                    <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-fg-tertiary">
-                      <Palette className="h-3 w-3" /> Direção Visual
-                    </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-fg-secondary">Paleta:</span>
-                        <div className="flex gap-1">
-                          {content.visualDirection.colors?.map((c: string, i: number) => (
-                            <div key={i} className="h-4 w-4 rounded border border-border" style={{ backgroundColor: c }} title={c} />
-                          ))}
-                        </div>
-                      </div>
-                      <p><span className="text-fg-secondary">Estilo:</span> {content.visualDirection.style}</p>
-                      <p><span className="text-fg-secondary">Tom:</span> {content.visualDirection.emotionalTone}</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Assets */}
                 <div>
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-tertiary">Assets</p>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between"><span className="text-fg-secondary">QR</span><span className="font-mono truncate max-w-36">{content.qrUrl || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-fg-secondary">Logo</span><span className="font-mono truncate max-w-36">{content.logoUrl?.split('/').pop() || '—'}</span></div>
                     <div className="flex justify-between"><span className="text-fg-secondary">Template</span><span>{sheet.template?.name}</span></div>
                   </div>
                 </div>
@@ -315,6 +341,231 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
     </div>
   )
 }
+
+// ─── Logo Selector Panel ──────────────────────────────────────────────────────
+
+function LogoSelectorPanel({
+  currentLogoUrl,
+  onSelect,
+}: {
+  currentLogoUrl?: string
+  onSelect: (logoUrl: string, logoAssetId: string) => void
+}) {
+  const { data: assets, isLoading } = useBrandAssets()
+  const [showPicker, setShowPicker] = useState(false)
+  const logos = assets?.filter((a) => a.type === 'LOGO') ?? []
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image className="h-4 w-4 text-fg-secondary" />
+            <CardTitle className="text-sm">Logo</CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setShowPicker(true)} className="text-xs">
+            Alterar
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {currentLogoUrl ? (
+          <div className="flex items-center justify-center rounded-standard bg-black/[0.03] dark:bg-white/[0.06] p-4 h-16">
+            <img src={currentLogoUrl} alt="Logo atual" className="max-h-full max-w-full object-contain" />
+          </div>
+        ) : (
+          <p className="text-xs text-fg-tertiary text-center py-4">Nenhuma logo selecionada</p>
+        )}
+      </CardContent>
+
+      {showPicker && (
+        <Modal open onClose={() => setShowPicker(false)}>
+          <ModalTitle>Selecionar Logo</ModalTitle>
+          <p className="mt-1 text-caption text-fg-secondary">Escolha a logo que será usada nesta lâmina</p>
+
+          <div className="mt-4 space-y-2 max-h-[50vh] overflow-y-auto">
+            {isLoading ? (
+              <p className="text-caption text-fg-tertiary py-8 text-center">Carregando...</p>
+            ) : logos.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-caption text-fg-tertiary">Nenhuma logo cadastrada</p>
+                <p className="text-micro text-fg-tertiary mt-1">Acesse Brand Assets para fazer upload</p>
+              </div>
+            ) : (
+              logos.map((logo) => (
+                <button
+                  key={logo.id}
+                  onClick={() => {
+                    onSelect(logo.url, logo.id)
+                    setShowPicker(false)
+                  }}
+                  className={`w-full flex items-center gap-3 rounded-standard p-3 text-left transition-all ${
+                    currentLogoUrl === logo.url
+                      ? 'bg-accent/[0.08] ring-1 ring-accent/30'
+                      : 'bg-surface hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <div className="h-10 w-16 shrink-0 flex items-center justify-center rounded bg-black/[0.03] dark:bg-white/[0.06] overflow-hidden">
+                    <img src={logo.url} alt={logo.name} className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-caption font-medium truncate">{logo.name}</p>
+                    <p className="text-micro text-fg-tertiary">{logo.format} · Melhor em fundo {logo.bestOn.toLowerCase()}</p>
+                  </div>
+                  {currentLogoUrl === logo.url && (
+                    <span className="text-micro text-accent font-medium">Atual</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+
+          <ModalFooter>
+            <Button variant="ghost" onClick={() => setShowPicker(false)}>Fechar</Button>
+          </ModalFooter>
+        </Modal>
+      )}
+    </Card>
+  )
+}
+
+// ─── Visual Direction Panel ───────────────────────────────────────────────────
+
+const STYLE_OPTIONS = [
+  'NEON TECH', 'CYBERPUNK', 'MINIMAL PREMIUM', 'GRADIENTE AURORA',
+  'BOLD INDUSTRIAL', 'WARM LIFESTYLE', 'ELECTRIC SPORT',
+]
+
+function VisualDirectionPanel({
+  visualDirection,
+  onUpdate,
+}: {
+  visualDirection: { style?: string; colors?: string[]; emotionalTone?: string; imageAmbiance?: string; background?: string }
+  onUpdate: (vd: typeof visualDirection) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [style, setStyle] = useState(visualDirection.style ?? '')
+  const [colors, setColors] = useState<string[]>(visualDirection.colors ?? [])
+  const [tone, setTone] = useState(visualDirection.emotionalTone ?? '')
+
+  function handleSave() {
+    onUpdate({
+      ...visualDirection,
+      style,
+      colors,
+      emotionalTone: tone,
+    })
+    setEditing(false)
+  }
+
+  function updateColor(index: number, value: string) {
+    const next = [...colors]
+    next[index] = value
+    setColors(next)
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4 text-fg-secondary" />
+            <CardTitle className="text-sm">Direção Visual</CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)} className="text-xs">
+            {editing ? 'Cancelar' : 'Editar'}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="space-y-4 animate-fade-in">
+            {/* Style */}
+            <div>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Estética</label>
+              <div className="flex flex-wrap gap-1.5">
+                {STYLE_OPTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStyle(s)}
+                    className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
+                      style === s
+                        ? 'bg-accent text-white'
+                        : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Paleta de Cores</label>
+              <div className="flex items-center gap-2">
+                {colors.map((c, i) => (
+                  <div key={i} className="relative">
+                    <input
+                      type="color"
+                      value={c}
+                      onChange={(e) => updateColor(i, e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-8 h-8"
+                    />
+                    <div
+                      className="h-8 w-8 rounded-standard border-2 border-border cursor-pointer"
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  </div>
+                ))}
+                {colors.length < 4 && (
+                  <button
+                    onClick={() => setColors([...colors, '#333333'])}
+                    className="h-8 w-8 rounded-standard border-2 border-dashed border-border flex items-center justify-center text-fg-tertiary hover:text-fg transition-colors"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Tone */}
+            <div>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Tom Emocional</label>
+              <input
+                type="text"
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                placeholder="ex: poder silencioso, futuro acessível..."
+                className="w-full rounded-comfortable border border-border bg-btn-default px-3 py-1.5 text-caption outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+
+            <Button size="sm" onClick={handleSave} className="w-full">
+              Salvar Direção Visual
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-fg-tertiary shrink-0">Paleta:</span>
+              <div className="flex gap-1">
+                {visualDirection.colors?.map((c: string, i: number) => (
+                  <div key={i} className="h-5 w-5 rounded border border-border" style={{ backgroundColor: c }} title={c} />
+                ))}
+              </div>
+            </div>
+            <p><span className="text-fg-tertiary">Estilo:</span> {visualDirection.style || '—'}</p>
+            <p><span className="text-fg-tertiary">Tom:</span> {visualDirection.emotionalTone || '—'}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Artifact Row ─────────────────────────────────────────────────────────────
 
 function SalesSheetArtifactRow({ artifact }: { artifact: import('@/lib/hooks/use-exports').ExportedArtifact }) {
   const { mutateAsync: getDownload, isPending } = useArtifactDownload()
