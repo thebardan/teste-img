@@ -120,9 +120,19 @@ export class ExportsService {
     if (!version) throw new NotFoundException('No version found for this sales sheet')
 
     const content = version.content as any
-    const zonesConfig = sheet.template?.zonesConfig as any
     const templateType = (sheet.template?.type ?? '') as string
     const orientation = templateType.includes('HORIZONTAL') ? 'landscape' as const : 'portrait' as const
+
+    // Designer Engine: use selected variation's layout and visual system
+    const selectedIdx = content.selectedVariation ?? 0
+    const activeVariation = content.variations?.[selectedIdx]
+    const zonesConfig = activeVariation?.layout?.zones ?? sheet.template?.zonesConfig as any
+    const visualSystem = activeVariation?.visualSystem ?? content.visualSystem ?? null
+
+    // If a variation is selected, use its copy for the export content
+    const exportContent = activeVariation
+      ? { ...content, headline: activeVariation.copy.headline, subtitle: activeVariation.copy.subtitle, benefits: activeVariation.copy.benefits, cta: activeVariation.copy.cta }
+      : content
 
     // Load the Gemini-generated art image if available
     let artImageBuffer: Buffer | null = null
@@ -134,7 +144,7 @@ export class ExportsService {
       }
     }
 
-    const buffer = await this.pdfComposer.composeSalesSheet(content, sheet.product.name, zonesConfig, orientation, artImageBuffer)
+    const buffer = await this.pdfComposer.composeSalesSheet(exportContent, sheet.product.name, zonesConfig, orientation, artImageBuffer, visualSystem)
 
     const filename = `${slugify(sheet.title)}-v${version.versionNumber}.pdf`
     const storageKey = `exports/sales-sheets/${salesSheetId}/${filename}`
