@@ -18,7 +18,7 @@ import { STATUS_BADGE_VARIANT as STATUS_BADGE, STATUS_LABELS } from '@/lib/const
 
 function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (id: string) => void }) {
   const [search, setSearch] = useState('')
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string; sku: string; primaryImageUrl: string | null } | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [channel, setChannel] = useState('Varejo')
   const [page, setPage] = useState(1)
   const { data: products, isFetching } = useProducts({ search, page })
@@ -116,12 +116,12 @@ function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
         className="mt-4"
       />
 
-      {!isPending && (
-        <ModalFooter>
-          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleGenerate} disabled={!selectedProduct} loading={isPending}>Gerar com IA</Button>
-        </ModalFooter>
-      )}
+      <ModalFooter>
+        <Button variant="ghost" onClick={onClose} disabled={isPending}>Cancelar</Button>
+        <Button onClick={handleGenerate} disabled={!selectedProduct || isPending} loading={isPending}>
+          Gerar com IA
+        </Button>
+      </ModalFooter>
     </Modal>
   )
 }
