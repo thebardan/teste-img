@@ -13,6 +13,7 @@ const mockProduct = {
   sku: 'HC123',
   benefits: [{ text: 'Som surround' }],
   specifications: [{ key: 'Peso', value: '250', unit: 'g' }],
+  images: [{ url: 'https://cdn.multilaser.com.br/headset.jpg', order: 0 }],
 }
 
 const mockPrisma = {
