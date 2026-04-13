@@ -15,17 +15,14 @@ import {
 } from '@/lib/hooks/use-approvals'
 import type { ApprovalStatus } from '@/lib/hooks/use-approvals'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
 import { CheckCircle2, XCircle, Archive, Send, Layers, Presentation, Clock, ChevronRight } from 'lucide-react'
 
 type Tab = ApprovalStatus | 'all'
 
-const STATUS_CONFIG: Record<ApprovalStatus, { label: string; color: string }> = {
-  DRAFT:     { label: 'Rascunho',   color: 'text-muted-foreground border-border' },
-  IN_REVIEW: { label: 'Em revisão', color: 'text-warning border-warning/30' },
-  APPROVED:  { label: 'Aprovado',   color: 'text-success border-success/30' },
-  REJECTED:  { label: 'Rejeitado',  color: 'text-danger border-danger/30' },
-  ARCHIVED:  { label: 'Arquivado',  color: 'text-muted-foreground/50 border-border/50' },
-}
+import { STATUS_BADGE_VARIANT as STATUS_BADGE, STATUS_LABELS } from '@/lib/constants'
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'all',       label: 'Todos' },
@@ -70,7 +67,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
         <button
           onClick={() => submit.mutateAsync({ id })}
           disabled={busy}
-          className="flex items-center gap-1 rounded-md border border-warning/30 px-2.5 py-1 text-xs text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1 rounded-comfortable border border-warning/30 px-2.5 py-1 text-micro text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
         >
           <Send className="h-3 w-3" /> Enviar revisão
         </button>
@@ -80,14 +77,14 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
           <button
             onClick={() => approve.mutateAsync({ id })}
             disabled={busy}
-            className="flex items-center gap-1 rounded-md border border-success/30 px-2.5 py-1 text-xs text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 rounded-comfortable border border-success/30 px-2.5 py-1 text-micro text-success hover:bg-success/10 disabled:opacity-50 transition-colors"
           >
             <CheckCircle2 className="h-3 w-3" /> Aprovar
           </button>
           <button
             onClick={() => setShowReject(true)}
             disabled={busy}
-            className="flex items-center gap-1 rounded-md border border-danger/30 px-2.5 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 rounded-comfortable border border-danger/30 px-2.5 py-1 text-micro text-danger hover:bg-danger/10 disabled:opacity-50 transition-colors"
           >
             <XCircle className="h-3 w-3" /> Rejeitar
           </button>
@@ -97,7 +94,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
         <button
           onClick={() => submit.mutateAsync({ id })}
           disabled={busy}
-          className="flex items-center gap-1 rounded-md border border-warning/30 px-2.5 py-1 text-xs text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1 rounded-comfortable border border-warning/30 px-2.5 py-1 text-micro text-warning hover:bg-warning/10 disabled:opacity-50 transition-colors"
         >
           <Send className="h-3 w-3" /> Reenviar
         </button>
@@ -106,7 +103,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
         <button
           onClick={() => archive.mutateAsync({ id })}
           disabled={busy}
-          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/20 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1 rounded-comfortable border border-border px-2.5 py-1 text-micro text-fg-tertiary hover:bg-black/[0.04] dark:bg-white/[0.06] disabled:opacity-50 transition-colors"
         >
           <Archive className="h-3 w-3" /> Arquivar
         </button>
@@ -119,18 +116,18 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Motivo da rejeição..."
-            className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+            className="flex-1 rounded-comfortable border border-border bg-btn-default px-3 py-1.5 text-micro outline-none focus:ring-2 focus:ring-accent placeholder:text-fg-tertiary"
           />
           <button
             onClick={handleReject}
             disabled={!comment.trim() || reject.isPending}
-            className="rounded-md border border-danger/30 px-3 py-1.5 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
+            className="rounded-comfortable border border-danger/30 px-3 py-1.5 text-micro text-danger hover:bg-danger/10 disabled:opacity-50"
           >
             Confirmar
           </button>
           <button
             onClick={() => { setShowReject(false); setComment('') }}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-micro text-fg-tertiary hover:text-fg"
           >
             Cancelar
           </button>
@@ -147,104 +144,105 @@ export function ApprovalsClient() {
   const total = data?.total ?? 0
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Aprovações</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{total} item(s)</p>
-      </div>
+    <div className="animate-slide-up">
+      {/* Hero section — dark */}
+      <section className="section-dark px-6 lg:px-10 py-16">
+        <h1 className="text-hero font-semibold">Aprovações</h1>
+        <p className="mt-2 text-body text-white/60">{total} item(s) no fluxo de aprovação</p>
+      </section>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 flex-wrap rounded-lg border border-border bg-muted/10 p-1 w-fit">
-        {TABS.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => setTab(t.value)}
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition-colors',
-              tab === t.value
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Content */}
+      <section className="px-6 lg:px-10 py-10">
+        <div className="max-w-5xl">
+          {/* Tabs */}
+          <div className="mb-6 flex gap-1 flex-wrap rounded-standard bg-black/[0.04] dark:bg-white/[0.06] p-1 w-fit">
+            {TABS.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setTab(t.value)}
+                className={cn(
+                  'rounded-comfortable px-3 py-1.5 text-caption transition-colors',
+                  tab === t.value
+                    ? 'bg-surface text-fg shadow-sm'
+                    : 'text-fg-secondary hover:text-fg',
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-20 rounded-lg border border-border bg-muted/20 animate-pulse" />
-          ))}
-        </div>
-      ) : total === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
-          <Clock className="mb-3 h-10 w-10 text-muted-foreground/40" />
-          <p className="font-medium">Nenhum item neste estado</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {data?.sheets.map((s) => {
-            const st = STATUS_CONFIG[s.status]
-            return (
-              <div key={s.id} className="rounded-lg border border-border bg-card px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/sales-sheets/${s.id}`} className="font-medium text-sm hover:text-primary truncate">
-                        {s.title}
-                      </Link>
-                      <span className={cn('text-xs rounded-full border px-2 py-0.5 shrink-0', st.color)}>
-                        {st.label}
-                      </span>
+          {isLoading ? (
+            <div className="space-y-3 stagger">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-standard" />
+              ))}
+            </div>
+          ) : total === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title="Nenhum item neste estado"
+              description="Itens aparecerão aqui conforme avançam no fluxo"
+            />
+          ) : (
+            <div className="space-y-2 stagger">
+              {data?.sheets.map((s) => (
+                <div key={s.id} className="rounded-standard bg-surface px-4 py-3 transition-all hover:shadow-card">
+                  <div className="flex items-center gap-3">
+                    <Layers className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/sales-sheets/${s.id}`} className="font-medium text-caption hover:text-accent truncate transition-colors">
+                          {s.title}
+                        </Link>
+                        <Badge variant={STATUS_BADGE[s.status]}>
+                          {STATUS_LABELS[s.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-micro text-fg-secondary mt-0.5">
+                        Lâmina · {s.product.name} · {s.author.name} · {new Date(s.updatedAt).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Lâmina · {s.product.name} · {s.author.name} · {new Date(s.updatedAt).toLocaleDateString('pt-BR')}
-                    </p>
+                    <Link href={`/sales-sheets/${s.id}`} className="shrink-0">
+                      <ChevronRight className="h-4 w-4 text-fg-tertiary" />
+                    </Link>
                   </div>
-                  <Link href={`/sales-sheets/${s.id}`} className="shrink-0">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </Link>
+                  <div className="mt-3 pl-7">
+                    <QuickActions type="sheet" id={s.id} status={s.status} />
+                  </div>
                 </div>
-                <div className="mt-3 pl-7">
-                  <QuickActions type="sheet" id={s.id} status={s.status} />
-                </div>
-              </div>
-            )
-          })}
+              ))}
 
-          {data?.presentations.map((p) => {
-            const st = STATUS_CONFIG[p.status]
-            return (
-              <div key={p.id} className="rounded-lg border border-border bg-card px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Presentation className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/presentations/${p.id}`} className="font-medium text-sm hover:text-primary truncate">
-                        {p.title}
-                      </Link>
-                      <span className={cn('text-xs rounded-full border px-2 py-0.5 shrink-0', st.color)}>
-                        {st.label}
-                      </span>
+              {data?.presentations.map((p) => (
+                <div key={p.id} className="rounded-standard bg-surface px-4 py-3 transition-all hover:shadow-card">
+                  <div className="flex items-center gap-3">
+                    <Presentation className="h-4 w-4 shrink-0 text-fg-tertiary" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/presentations/${p.id}`} className="font-medium text-caption hover:text-accent truncate transition-colors">
+                          {p.title}
+                        </Link>
+                        <Badge variant={STATUS_BADGE[p.status]}>
+                          {STATUS_LABELS[p.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-micro text-fg-secondary mt-0.5">
+                        Apresentação · {p.client?.name ?? 'Sem cliente'} · {p.author.name} · {new Date(p.updatedAt).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Apresentação · {p.client?.name ?? 'Sem cliente'} · {p.author.name} · {new Date(p.updatedAt).toLocaleDateString('pt-BR')}
-                    </p>
+                    <Link href={`/presentations/${p.id}`} className="shrink-0">
+                      <ChevronRight className="h-4 w-4 text-fg-tertiary" />
+                    </Link>
                   </div>
-                  <Link href={`/presentations/${p.id}`} className="shrink-0">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </Link>
+                  <div className="mt-3 pl-7">
+                    <QuickActions type="presentation" id={p.id} status={p.status} />
+                  </div>
                 </div>
-                <div className="mt-3 pl-7">
-                  <QuickActions type="presentation" id={p.id} status={p.status} />
-                </div>
-              </div>
-            )
-          })}
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </section>
     </div>
   )
 }

@@ -15,14 +15,7 @@ import {
   Layers, Presentation, Package, CheckSquare,
   ArrowRight, Sparkles,
 } from 'lucide-react'
-
-const STATUS_BADGE: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
-  DRAFT: 'default',
-  IN_REVIEW: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'danger',
-  ARCHIVED: 'default',
-}
+import { STATUS_BADGE_VARIANT as STATUS_BADGE, STATUS_LABELS } from '@/lib/constants'
 
 export function DashboardClient() {
   const { data: sheetsData, isLoading: loadingSheets } = useSalesSheets()
@@ -130,7 +123,7 @@ export function DashboardClient() {
                       <p className="text-caption font-medium truncate group-hover:text-accent transition-colors">{item.title}</p>
                       <p className="text-micro text-fg-tertiary">{item.product ?? '—'}</p>
                     </div>
-                    <Badge variant={STATUS_BADGE[item.status] ?? 'default'}>{item.status}</Badge>
+                    <Badge variant={STATUS_BADGE[item.status] ?? 'default'}>{STATUS_LABELS[item.status] ?? item.status}</Badge>
                     <span className="text-nano text-fg-tertiary">{formatRelative(item.date)}</span>
                   </Link>
                 ))}

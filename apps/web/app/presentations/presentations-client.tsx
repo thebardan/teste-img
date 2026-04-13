@@ -11,25 +11,12 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Modal, ModalTitle, ModalDescription, ModalFooter } from '@/components/ui/modal'
+import { GenerationProgress } from '@/components/ui/generation-progress'
 import {
   Plus, Presentation, ChevronRight, Package, Check, ArrowRight, ArrowLeft,
 } from 'lucide-react'
 
-const statusVariantMap: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
-  DRAFT: 'default',
-  IN_REVIEW: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'danger',
-  ARCHIVED: 'default',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Rascunho',
-  IN_REVIEW: 'Em revisão',
-  APPROVED: 'Aprovado',
-  REJECTED: 'Rejeitado',
-  ARCHIVED: 'Arquivado',
-}
+import { STATUS_BADGE_VARIANT as statusVariantMap, STATUS_LABELS } from '@/lib/constants'
 
 // ─── Wizard ──────────────────────────────────────────────────────────────────
 
@@ -75,7 +62,7 @@ function WizardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
           <div key={s} className="flex items-center gap-2 flex-1">
             <div className={cn(
               'flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors',
-              i <= step ? 'bg-primary text-primary-foreground' : 'bg-black/[0.04] text-fg-secondary'
+              i <= step ? 'bg-primary text-primary-foreground' : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary'
             )}>
               {i < step ? <Check className="h-3 w-3" /> : i + 1}
             </div>
@@ -103,7 +90,7 @@ function WizardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                     'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors',
                     selectedProducts.includes(p.id)
                       ? 'bg-accent/[0.08] border border-primary/30'
-                      : 'hover:bg-black/[0.04] border border-transparent',
+                      : 'hover:bg-black/[0.04] dark:bg-white/[0.06] border border-transparent',
                   )}
                 >
                   <div className={cn(
@@ -117,7 +104,7 @@ function WizardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                     <p className="text-xs text-fg-secondary font-mono">{p.sku}</p>
                   </div>
                   {p.primaryImageUrl && (
-                    <img src={p.primaryImageUrl} alt="" className="h-8 w-8 rounded object-contain bg-black/[0.03]" />
+                    <img src={p.primaryImageUrl} alt="" className="h-8 w-8 rounded object-contain bg-black/[0.03] dark:bg-white/[0.06]" />
                   )}
                 </button>
               ))}
@@ -191,30 +178,39 @@ function WizardModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
               )}
             </div>
 
-            {error && (
+            {error && !isPending && (
               <p className="text-xs text-danger">{(error as Error).message}</p>
             )}
           </div>
         )}
       </div>
 
-      <ModalFooter>
-        {step > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)}>
-            <ArrowLeft className="h-3.5 w-3.5" /> Voltar
-          </Button>
-        )}
-        <div className="flex-1" />
-        {step < 2 ? (
-          <Button size="sm" onClick={() => setStep(step + 1)} disabled={!canNext}>
-            Próximo <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        ) : (
-          <Button size="sm" onClick={handleGenerate} loading={isPending} disabled={!selectedProducts.length}>
-            Gerar com IA
-          </Button>
-        )}
-      </ModalFooter>
+      <GenerationProgress
+        type="presentation"
+        isGenerating={isPending}
+        error={error ? (error as Error).message : null}
+        className="mt-4"
+      />
+
+      {!isPending && (
+        <ModalFooter>
+          {step > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)}>
+              <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+            </Button>
+          )}
+          <div className="flex-1" />
+          {step < 2 ? (
+            <Button size="sm" onClick={() => setStep(step + 1)} disabled={!canNext}>
+              Próximo <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleGenerate} loading={isPending} disabled={!selectedProducts.length}>
+              Gerar com IA
+            </Button>
+          )}
+        </ModalFooter>
+      )}
     </Modal>
   )
 }
@@ -231,65 +227,73 @@ export function PresentationsClient() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl animate-slide-up">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Apresentações</h1>
-          <p className="mt-1 text-sm text-fg-secondary">{data?.total ?? 0} apresentações</p>
+    <div className="animate-slide-up">
+      {/* Hero section — dark */}
+      <section className="section-dark px-6 lg:px-10 py-16">
+        <div className="flex items-center justify-between max-w-5xl">
+          <div>
+            <h1 className="text-hero font-semibold">Apresentações</h1>
+            <p className="mt-2 text-body text-white/60">{data?.total ?? 0} apresentações</p>
+          </div>
+          <Button onClick={() => setShowWizard(true)}>
+            <Plus className="h-4 w-4" /> Nova Apresentação
+          </Button>
         </div>
-        <Button onClick={() => setShowWizard(true)}>
-          <Plus className="h-4 w-4" /> Nova Apresentação
-        </Button>
-      </div>
+      </section>
 
-      {isLoading ? (
-        <div className="space-y-3 stagger">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-lg" />
-          ))}
+      {/* Content */}
+      <section className="px-6 lg:px-10 py-10">
+        <div className="max-w-5xl">
+          {isLoading ? (
+            <div className="space-y-3 stagger">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-standard" />
+              ))}
+            </div>
+          ) : !data?.data.length ? (
+            <EmptyState
+              icon={Presentation}
+              title="Nenhuma apresentação"
+              description="Clique em 'Nova Apresentação' para gerar com IA"
+              action={
+                <Button onClick={() => setShowWizard(true)} size="sm">
+                  <Plus className="h-4 w-4" /> Criar primeira
+                </Button>
+              }
+            />
+          ) : (
+            <div className="space-y-2 stagger">
+              {data.data.map((p) => {
+                const slideCount = p.versions[0]?.slides.length ?? 0
+                return (
+                  <Link key={p.id} href={`/presentations/${p.id}`}>
+                    <Card elevated className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/[0.08] text-accent">
+                          <Presentation className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-caption truncate">{p.title}</p>
+                          <p className="text-micro text-fg-secondary">
+                            {p.client?.name ?? 'Sem cliente'}
+                            {p.channel ? ` · ${p.channel}` : ''}
+                            {slideCount > 0 ? ` · ${slideCount} slides` : ''}
+                            {' · '}{p.template.name}
+                          </p>
+                        </div>
+                        <Badge variant={statusVariantMap[p.status] ?? 'default'} className="shrink-0">
+                          {STATUS_LABELS[p.status] ?? p.status}
+                        </Badge>
+                        <ChevronRight className="h-4 w-4 text-fg-tertiary shrink-0" />
+                      </div>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
-      ) : !data?.data.length ? (
-        <EmptyState
-          icon={Presentation}
-          title="Nenhuma apresentação"
-          description="Clique em 'Nova Apresentação' para gerar com IA"
-          action={
-            <Button onClick={() => setShowWizard(true)} size="sm">
-              <Plus className="h-4 w-4" /> Criar primeira
-            </Button>
-          }
-        />
-      ) : (
-        <div className="space-y-2 stagger">
-          {data.data.map((p) => {
-            const slideCount = p.versions[0]?.slides.length ?? 0
-            return (
-              <Link key={p.id} href={`/presentations/${p.id}`}>
-                <Card elevated className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/[0.08] text-accent">
-                      <Presentation className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{p.title}</p>
-                      <p className="text-xs text-fg-secondary">
-                        {p.client?.name ?? 'Sem cliente'}
-                        {p.channel ? ` · ${p.channel}` : ''}
-                        {slideCount > 0 ? ` · ${slideCount} slides` : ''}
-                        {' · '}{p.template.name}
-                      </p>
-                    </div>
-                    <Badge variant={statusVariantMap[p.status] ?? 'secondary'} className="shrink-0">
-                      {STATUS_LABELS[p.status] ?? p.status}
-                    </Badge>
-                    <ChevronRight className="h-4 w-4 text-fg-tertiary shrink-0" />
-                  </div>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
-      )}
+      </section>
 
       {showWizard && <WizardModal onClose={() => setShowWizard(false)} onSuccess={handleSuccess} />}
     </div>

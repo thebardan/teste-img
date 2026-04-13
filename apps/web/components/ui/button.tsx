@@ -19,7 +19,7 @@ const buttonVariants = cva(
           'bg-transparent text-accent-link border border-accent-link rounded-pill hover:bg-accent hover:text-white hover:border-accent',
         /* Ghost / subtle */
         ghost:
-          'bg-transparent text-fg-secondary rounded-standard hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]',
+          'bg-transparent text-fg-secondary rounded-standard hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08] dark:active:bg-white/[0.12]',
         /* Danger */
         danger:
           'bg-danger text-white rounded-standard hover:brightness-110',

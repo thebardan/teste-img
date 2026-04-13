@@ -10,17 +10,11 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Modal, ModalTitle, ModalFooter } from '@/components/ui/modal'
+import { GenerationProgress } from '@/components/ui/generation-progress'
 import {
   Plus, Layers, ChevronRight, Search, Package, Loader2,
 } from 'lucide-react'
-
-const STATUS_BADGE: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
-  DRAFT: 'default',
-  IN_REVIEW: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'danger',
-  ARCHIVED: 'default',
-}
+import { STATUS_BADGE_VARIANT as STATUS_BADGE, STATUS_LABELS } from '@/lib/constants'
 
 function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (id: string) => void }) {
   const [search, setSearch] = useState('')
@@ -69,7 +63,7 @@ function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1) }}
                   autoFocus
-                  className="w-full rounded-comfortable border-[3px] border-black/[0.04] bg-btn-default pl-9 pr-4 py-2 text-body outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full rounded-comfortable border border-border bg-btn-default pl-9 pr-4 py-2 text-body outline-none focus:ring-2 focus:ring-accent"
                 />
                 {isFetching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-fg-tertiary" />}
               </div>
@@ -78,7 +72,7 @@ function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
                   <p className="px-3 py-6 text-center text-caption text-fg-tertiary">{isFetching ? 'Buscando...' : 'Nenhum produto'}</p>
                 ) : products.data.map((p) => (
                   <button key={p.id} onClick={() => setSelectedProduct(p)}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-black/[0.04] transition-colors">
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-micro bg-surface overflow-hidden">
                       {p.primaryImageUrl ? <img src={p.primaryImageUrl} alt="" className="h-full w-full object-contain" /> : <Package className="h-3.5 w-3.5 text-fg-tertiary" />}
                     </div>
@@ -92,8 +86,8 @@ function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
                   <div className="flex items-center justify-between px-3 py-2 border-t border-border">
                     <span className="text-micro text-fg-tertiary">{products!.total} produtos</span>
                     <div className="flex gap-1">
-                      <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-2 py-0.5 text-micro rounded-micro hover:bg-black/[0.04] disabled:opacity-30">&lsaquo;</button>
-                      <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-2 py-0.5 text-micro rounded-micro hover:bg-black/[0.04] disabled:opacity-30">&rsaquo;</button>
+                      <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-2 py-0.5 text-micro rounded-micro hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-30">&lsaquo;</button>
+                      <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-2 py-0.5 text-micro rounded-micro hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-30">&rsaquo;</button>
                     </div>
                   </div>
                 )}
@@ -108,19 +102,26 @@ function GenerateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
             {['Varejo', 'Distribuidor', 'Varejo Premium', 'E-commerce'].map((c) => (
               <button key={c} onClick={() => setChannel(c)}
                 className={cn('rounded-standard px-3 py-2.5 text-caption text-left transition-all',
-                  channel === c ? 'bg-accent/[0.08] text-accent font-medium ring-1 ring-accent/30' : 'bg-btn-default text-fg-secondary hover:bg-black/[0.04]'
+                  channel === c ? 'bg-accent/[0.08] text-accent font-medium ring-1 ring-accent/30' : 'bg-btn-default text-fg-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
                 )}>{c}</button>
             ))}
           </div>
         </div>
       </div>
 
-      {error && <p className="mt-3 text-micro text-danger">{(error as Error).message}</p>}
+      <GenerationProgress
+        type="sales-sheet"
+        isGenerating={isPending}
+        error={error ? (error as Error).message : null}
+        className="mt-4"
+      />
 
-      <ModalFooter>
-        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleGenerate} disabled={!selectedProduct} loading={isPending}>Gerar com IA</Button>
-      </ModalFooter>
+      {!isPending && (
+        <ModalFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleGenerate} disabled={!selectedProduct} loading={isPending}>Gerar com IA</Button>
+        </ModalFooter>
+      )}
     </Modal>
   )
 }
@@ -162,7 +163,7 @@ export function SalesSheetsClient() {
                     <p className="text-body font-medium truncate group-hover:text-accent transition-colors">{sheet.title}</p>
                     <p className="text-micro text-fg-tertiary">{sheet.product.name} · {sheet.template.name}</p>
                   </div>
-                  <Badge variant={STATUS_BADGE[sheet.status]}>{sheet.status}</Badge>
+                  <Badge variant={STATUS_BADGE[sheet.status]}>{STATUS_LABELS[sheet.status] ?? sheet.status}</Badge>
                   <ChevronRight className="h-4 w-4 text-fg-tertiary shrink-0" />
                 </Link>
               ))}

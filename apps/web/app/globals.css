@@ -110,6 +110,11 @@
     --border-default: rgba(255, 255, 255, 0.1);
     --border-subtle: rgba(255, 255, 255, 0.05);
 
+    /* Button states in dark mode */
+    --color-btn-default: var(--color-dark-surface-3);
+    --color-btn-active: var(--color-dark-surface-5);
+    --color-overlay: rgba(0, 0, 0, 0.64);
+
     --shadow-card: 3px 5px 30px 0px rgba(0, 0, 0, 0.5);
 
     --background: 0 0% 0%;
