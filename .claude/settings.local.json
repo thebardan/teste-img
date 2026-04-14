@@ -70,7 +70,9 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__press_key",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__resize_page",
       "Bash(npx next:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(bash apps/api/scripts/download-fonts.sh)",
+      "Bash(npx jest:*)"
     ]
   }
 }
