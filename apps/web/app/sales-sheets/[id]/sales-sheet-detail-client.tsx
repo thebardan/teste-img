@@ -49,6 +49,7 @@ interface ToolDef {
   label: string
   icon: React.ComponentType<{ className?: string }>
   badge?: number
+  highlight?: boolean
 }
 
 const statusVariantMap: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
@@ -483,8 +484,8 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
 function ToolRail({ activeTool, onSelect }: { activeTool: ToolId | null; onSelect: (id: ToolId) => void }) {
   const tools: ToolDef[] = [
+    { id: 'ai',         label: 'Gerar lâmina',     icon: Wand2, highlight: true },
     { id: 'variations', label: 'Variações',        icon: Sparkles },
-    { id: 'ai',         label: 'Ferramentas IA',   icon: Wand2 },
     { id: 'photos',     label: 'Fotos do produto', icon: Image },
     { id: 'art',        label: 'Arte Gemini',      icon: ImageIcon },
     { id: 'visual',     label: 'Direção Visual',   icon: Palette },
@@ -501,19 +502,23 @@ function ToolRail({ activeTool, onSelect }: { activeTool: ToolId | null; onSelec
       {tools.map((t) => {
         const Icon = t.icon
         const active = activeTool === t.id
+        const cls = t.highlight
+          ? active
+            ? 'bg-accent text-white shadow-md ring-2 ring-accent/40'
+            : 'bg-accent/15 text-accent hover:bg-accent/25 ring-1 ring-accent/30'
+          : active
+            ? 'bg-accent text-white shadow-sm'
+            : 'text-fg-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-fg'
         return (
-          <button
-            key={t.id}
-            onClick={() => onSelect(t.id)}
-            title={t.label}
-            className={`flex h-10 w-10 items-center justify-center rounded-micro transition-all ${
-              active
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-fg-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-fg'
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-          </button>
+          <div key={t.id} className={t.highlight ? 'mb-1 pb-1 border-b border-border' : ''}>
+            <button
+              onClick={() => onSelect(t.id)}
+              title={t.label}
+              className={`flex h-10 w-10 items-center justify-center rounded-micro transition-all ${cls}`}
+            >
+              <Icon className="h-4 w-4" />
+            </button>
+          </div>
         )
       })}
     </div>

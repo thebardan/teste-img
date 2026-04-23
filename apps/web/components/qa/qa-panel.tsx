@@ -44,7 +44,10 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">QA / Validação</p>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-fg-secondary" />
+          <h3 className="text-sm font-semibold">QA / Validação</h3>
+        </div>
         {result && (
           <span className={cn(
             'text-xs font-bold rounded-full border px-2.5 py-0.5',

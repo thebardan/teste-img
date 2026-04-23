@@ -113,7 +113,10 @@ export function StatusActionsPanel({
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
       {/* Current status */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</p>
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-fg-secondary" />
+          <h3 className="text-sm font-semibold">Aprovação</h3>
+        </div>
         <span className={cn('text-xs rounded-full border px-2.5 py-0.5', st.color)}>{st.label}</span>
       </div>
 
