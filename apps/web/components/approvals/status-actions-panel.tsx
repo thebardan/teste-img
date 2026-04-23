@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, Archive, Send, Clock,
   ChevronDown, ChevronUp, Plus, Trash2,
 } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 const STATUS_CONFIG: Record<ApprovalStatus, { label: string; color: string }> = {
   DRAFT:     { label: 'Rascunho',   color: 'text-muted-foreground border-border' },
@@ -110,15 +111,18 @@ export function StatusActionsPanel({
   }
 
   return (
-    <div className="rounded-lg bg-surface p-4 space-y-4">
+    <Card>
+      <CardHeader className="pb-3">
       {/* Current status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-fg-secondary" />
-          <h3 className="text-sm font-semibold">Aprovação</h3>
+          <CardTitle className="text-sm">Aprovação</CardTitle>
         </div>
         <span className={cn('text-xs rounded-full border px-2.5 py-0.5', st.color)}>{st.label}</span>
       </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
 
       {/* Actions */}
       {currentStatus !== 'ARCHIVED' && (
@@ -342,6 +346,7 @@ export function StatusActionsPanel({
           )}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

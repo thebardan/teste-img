@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { QAResult, QACheckLevel } from '@/lib/hooks/use-qa'
 import { cn } from '@/lib/utils'
 import { ShieldCheck, ShieldAlert, Loader2, ChevronDown, ChevronUp, Info, Lightbulb } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 const LEVEL_COLOR: Record<QACheckLevel, string> = {
   ERROR:   'text-danger',
@@ -42,11 +43,12 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
   const aiWarnings = result?.aiFindings.filter((f) => f.severity === 'WARNING').length ?? 0
 
   return (
-    <div className="rounded-lg bg-surface p-4 space-y-3">
+    <Card>
+      <CardHeader className="pb-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-fg-secondary" />
-          <h3 className="text-sm font-semibold">QA / Validação</h3>
+          <CardTitle className="text-sm">QA / Validação</CardTitle>
         </div>
         {result && (
           <span className={cn(
@@ -57,6 +59,8 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
           </span>
         )}
       </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
 
       {!result ? (
         <button
@@ -180,6 +184,7 @@ export function QAPanel({ onRun, isRunning }: QAPanelProps) {
           </button>
         </>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }
