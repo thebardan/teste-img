@@ -13,6 +13,21 @@ export class ArtComposerService {
     private storage: StorageService,
   ) {}
 
+  async generateBatch(
+    salesSheetId: string,
+    count: number,
+    refinementPrompt?: string,
+  ): Promise<{ artImageUrl: string; artImageKey: string }[]> {
+    const n = Math.max(1, Math.min(5, count))
+    const results = await Promise.all(
+      Array.from({ length: n }).map((_, i) => {
+        const variantHint = `\n\nVariação ${i + 1}/${n}: explore composição/angulação diferente das anteriores.`
+        return this.generateArt(salesSheetId, (refinementPrompt ?? '') + variantHint)
+      }),
+    )
+    return results
+  }
+
   async generateArt(
     salesSheetId: string,
     refinementPrompt?: string,

@@ -2,7 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePresentation } from '@/lib/hooks/use-presentations'
+import {
+  usePresentation,
+  useUpdateSlideContent,
+  useRegenerateSlide,
+  useReorderSlides,
+  useAddSlide,
+  useRemoveSlide,
+  type SlideType,
+} from '@/lib/hooks/use-presentations'
 import {
   useExportPresentationPptx,
   useExportPresentationPdf,
@@ -17,6 +25,7 @@ import {
   usePresentationApprovals,
 } from '@/lib/hooks/use-approvals'
 import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
+import { VersionDiff } from '@/components/approvals/version-diff'
 import { QAPanel } from '@/components/qa/qa-panel'
 import { useQAPresentation } from '@/lib/hooks/use-qa'
 import { PresentationSlideCanvas } from '@/components/canvas/presentation-slide-canvas'
@@ -28,6 +37,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import {
   ArrowLeft, Layers, Building2, Download, FileText,
   MonitorPlay, ChevronLeft, ChevronRight, Presentation,
+  RefreshCw, Plus, Trash2, ArrowUp, ArrowDown,
 } from 'lucide-react'
 
 const SLIDE_TYPE_LABELS: Record<string, string> = {
@@ -37,6 +47,8 @@ const SLIDE_TYPE_LABELS: Record<string, string> = {
   benefits: 'Beneficios',
   closing: 'Encerramento',
 }
+
+const SLIDE_TYPE_OPTIONS: SlideType[] = ['cover', 'context', 'products', 'benefits', 'closing']
 
 const statusVariantMap: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
   DRAFT: 'default',
@@ -58,7 +70,13 @@ export function PresentationDetailClient({ id }: { id: string }) {
   const { mutateAsync: archiveMut, isPending: archiving } = useArchivePresentation()
   const approvalBusy = submitting || approving || rejecting || archiving
   const { mutateAsync: runQA, isPending: runningQA } = useQAPresentation()
+  const { mutateAsync: updateSlideContent } = useUpdateSlideContent()
+  const { mutateAsync: regenerateSlide, isPending: regenerating } = useRegenerateSlide()
+  const { mutateAsync: reorderSlides, isPending: reordering } = useReorderSlides()
+  const { mutateAsync: addSlide, isPending: addingSlide } = useAddSlide()
+  const { mutateAsync: removeSlide, isPending: removingSlide } = useRemoveSlide()
   const [activeSlide, setActiveSlide] = useState(0)
+  const [showAdd, setShowAdd] = useState(false)
 
   async function handleExport(type: 'pptx' | 'pdf') {
     const fn = type === 'pptx' ? exportPptx : exportPdf
@@ -78,9 +96,33 @@ export function PresentationDetailClient({ id }: { id: string }) {
 
   const latestVersion = presentation.versions?.[0]
   const slides = latestVersion?.slides ?? []
-  const currentSlide = slides[activeSlide]
+  const safeActive = Math.min(activeSlide, Math.max(0, slides.length - 1))
+  const currentSlide = slides[safeActive]
   const currentContent = currentSlide?.content as any
   const zonesConfig = presentation.template?.zonesConfig as any
+
+  async function handleMoveSlide(direction: -1 | 1) {
+    if (!currentSlide) return
+    const newIdx = safeActive + direction
+    if (newIdx < 0 || newIdx >= slides.length) return
+    const ordered = slides.map((s) => s.id)
+    ;[ordered[safeActive], ordered[newIdx]] = [ordered[newIdx], ordered[safeActive]]
+    await reorderSlides({ id, orderedIds: ordered })
+    setActiveSlide(newIdx)
+  }
+
+  async function handleRemoveCurrent() {
+    if (!currentSlide) return
+    if (!confirm('Remover este slide?')) return
+    await removeSlide({ id, order: safeActive })
+    setActiveSlide(Math.max(0, safeActive - 1))
+  }
+
+  async function handleAddSlide(type: SlideType) {
+    await addSlide({ id, type, afterOrder: safeActive })
+    setActiveSlide(safeActive + 1)
+    setShowAdd(false)
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl animate-slide-up">
@@ -113,7 +155,6 @@ export function PresentationDetailClient({ id }: { id: string }) {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         {/* Left: Slides */}
         <div className="space-y-4">
-          {/* Active slide canvas */}
           {slides.length > 0 && currentContent ? (
             <Card>
               <CardHeader className="pb-2">
@@ -121,15 +162,15 @@ export function PresentationDetailClient({ id }: { id: string }) {
                   <div className="flex items-center gap-2">
                     <Layers className="h-4 w-4 text-primary" />
                     <CardTitle className="text-sm">
-                      Slide {activeSlide + 1}/{slides.length} — {SLIDE_TYPE_LABELS[currentContent?.type] ?? currentContent?.type}
+                      Slide {safeActive + 1}/{slides.length} — {SLIDE_TYPE_LABELS[currentContent?.type] ?? currentContent?.type}
                     </CardTitle>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setActiveSlide(Math.max(0, activeSlide - 1))}
-                      disabled={activeSlide === 0}
+                      onClick={() => setActiveSlide(Math.max(0, safeActive - 1))}
+                      disabled={safeActive === 0}
                       className="h-7 w-7"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -137,8 +178,8 @@ export function PresentationDetailClient({ id }: { id: string }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setActiveSlide(Math.min(slides.length - 1, activeSlide + 1))}
-                      disabled={activeSlide === slides.length - 1}
+                      onClick={() => setActiveSlide(Math.min(slides.length - 1, safeActive + 1))}
+                      disabled={safeActive === slides.length - 1}
                       className="h-7 w-7"
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -146,10 +187,52 @@ export function PresentationDetailClient({ id }: { id: string }) {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => regenerateSlide({ id, order: safeActive })}
+                    loading={regenerating}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Regenerar slide
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleMoveSlide(-1)}
+                    disabled={safeActive === 0 || reordering}
+                    className="text-xs"
+                  >
+                    <ArrowUp className="h-3 w-3" /> Mover p/ cima
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleMoveSlide(1)}
+                    disabled={safeActive === slides.length - 1 || reordering}
+                    className="text-xs"
+                  >
+                    <ArrowDown className="h-3 w-3" /> Mover p/ baixo
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveCurrent}
+                    loading={removingSlide}
+                    className="text-xs text-danger"
+                  >
+                    <Trash2 className="h-3 w-3" /> Remover
+                  </Button>
+                </div>
                 <PresentationSlideCanvas
                   content={currentContent}
                   zonesConfig={zonesConfig}
+                  editable
+                  onContentChange={(field, value) =>
+                    updateSlideContent({ id, order: safeActive, content: { [field]: value } })
+                  }
                 />
               </CardContent>
             </Card>
@@ -163,36 +246,64 @@ export function PresentationDetailClient({ id }: { id: string }) {
             </Card>
           )}
 
-          {/* Slide thumbnails */}
-          {slides.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {slides.map((slide, i) => {
-                const slideContent = slide.content as any
-                return (
+          {/* Thumbnails + add */}
+          <div className="flex gap-2 overflow-x-auto pb-2 items-stretch">
+            {slides.map((slide, i) => {
+              const slideContent = slide.content as any
+              return (
+                <button
+                  key={slide.id ?? i}
+                  onClick={() => setActiveSlide(i)}
+                  className={`shrink-0 w-36 rounded-lg border-2 overflow-hidden transition-all ${
+                    i === safeActive
+                      ? 'border-primary shadow-card'
+                      : 'border-border hover:border-fg-tertiary opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <PresentationSlideCanvas
+                    content={slideContent}
+                    zonesConfig={zonesConfig}
+                    compact
+                  />
+                  <div className="bg-canvas px-2 py-1 border-t border-border">
+                    <p className="text-[9px] font-medium text-fg-secondary truncate">
+                      {i + 1}. {SLIDE_TYPE_LABELS[slideContent?.type] ?? slideContent?.type}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+            <div className="shrink-0 flex flex-col items-center justify-center">
+              {showAdd ? (
+                <div className="flex flex-col gap-1 rounded-lg border-2 border-dashed border-border p-2 w-36">
+                  {SLIDE_TYPE_OPTIONS.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => handleAddSlide(t)}
+                      disabled={addingSlide}
+                      className="text-[10px] rounded px-2 py-1 hover:bg-accent/10 text-left transition-colors"
+                    >
+                      + {SLIDE_TYPE_LABELS[t]}
+                    </button>
+                  ))}
                   <button
-                    key={slide.id ?? i}
-                    onClick={() => setActiveSlide(i)}
-                    className={`shrink-0 w-36 rounded-lg border-2 overflow-hidden transition-all ${
-                      i === activeSlide
-                        ? 'border-primary shadow-card'
-                        : 'border-border hover:border-fg-tertiary opacity-70 hover:opacity-100'
-                    }`}
+                    onClick={() => setShowAdd(false)}
+                    className="text-[10px] rounded px-2 py-1 text-fg-tertiary hover:text-fg"
                   >
-                    <PresentationSlideCanvas
-                      content={slideContent}
-                      zonesConfig={zonesConfig}
-                      compact
-                    />
-                    <div className="bg-canvas px-2 py-1 border-t border-border">
-                      <p className="text-[9px] font-medium text-fg-secondary truncate">
-                        {i + 1}. {SLIDE_TYPE_LABELS[slideContent?.type] ?? slideContent?.type}
-                      </p>
-                    </div>
+                    Cancelar
                   </button>
-                )
-              })}
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="h-full w-36 rounded-lg border-2 border-dashed border-border hover:border-accent flex items-center justify-center gap-1 text-fg-tertiary hover:text-accent transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-xs">Adicionar slide</span>
+                </button>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Slide content details */}
           {currentContent && (
@@ -242,9 +353,11 @@ export function PresentationDetailClient({ id }: { id: string }) {
           <StatusActionsPanel
             currentStatus={presentation.status as any}
             history={approvalHistory}
+            entityKind="presentation"
+            slideCount={slides.length}
             onSubmit={() => submitMut({ id })}
             onApprove={() => approveMut({ id })}
-            onReject={(comment) => rejectMut({ id, comment })}
+            onReject={({ comment, annotations }) => rejectMut({ id, comment, annotations })}
             onArchive={() => archiveMut({ id })}
             isLoading={approvalBusy}
           />
@@ -295,6 +408,11 @@ export function PresentationDetailClient({ id }: { id: string }) {
               )}
             </CardContent>
           </Card>
+
+          {/* Version Diff */}
+          {presentation.versions.length > 1 && (
+            <VersionDiff versions={presentation.versions as any} kind="presentation" />
+          )}
 
           {/* Versions */}
           {presentation.versions.length > 0 && (

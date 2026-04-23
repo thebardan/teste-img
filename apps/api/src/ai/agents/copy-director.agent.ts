@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { PromptEngineService } from '../prompt-engine/prompt-engine.service'
+import { BrandGovernanceService, ClientBrandProfile } from '../../brand-governance/brand-governance.service'
 
-// Tone profiles per product category
+// Fallback tone profiles per product category — used only if DB has nothing.
+// Source of truth moved to TonePreset table; edit via /brand-governance/tones.
 const CATEGORY_TONE: Record<string, { tone: string; voice: string }> = {
   gamer: {
     tone: 'intenso, provocador, cheio de adrenalina — fala com quem vive para ganhar',
@@ -81,6 +83,7 @@ export interface CopyDirectorInput {
   benefits: string[]
   specs: string
   channel: string
+  clientProfile?: ClientBrandProfile | null
 }
 
 export interface CopyVariation {
@@ -103,20 +106,37 @@ export interface CopyDirectorOutput {
 
 @Injectable()
 export class CopyDirectorAgent {
-  constructor(private promptEngine: PromptEngineService) {}
+  constructor(
+    private promptEngine: PromptEngineService,
+    private brandGovernance: BrandGovernanceService,
+  ) {}
 
   async generate(
     input: CopyDirectorInput,
     opts?: { salesSheetVersionId?: string },
   ): Promise<CopyDirectorOutput> {
     const categoryKey = input.category.toLowerCase()
-    const toneData = CATEGORY_TONE[categoryKey] ?? {
+    // DB first, fallback to inline map.
+    const dbTone = await this.brandGovernance.getToneForCategory(categoryKey).catch(() => null)
+    const toneData = dbTone ?? CATEGORY_TONE[categoryKey] ?? {
       tone: 'profissional, claro e persuasivo',
       voice: 'especialista de produto Multilaser',
     }
 
-    const channelCtas = CHANNEL_CTA[input.channel] ?? CHANNEL_CTA['Varejo']
+    const dbCtas = await this.brandGovernance.getCtasForChannel(input.channel).catch(() => null)
+    const channelCtas = dbCtas && dbCtas.length > 0 ? dbCtas : (CHANNEL_CTA[input.channel] ?? CHANNEL_CTA['Varejo'])
     const ctaExamples = channelCtas.join(' | ')
+
+    // Client brand profile constraints
+    const profile = input.clientProfile
+    const forbiddenTerms = (profile?.forbiddenTerms ?? []).filter(Boolean)
+    const requiredDisclaimers = (profile?.requiredDisclaimers ?? []).filter(Boolean)
+    const voiceOverride = profile?.voice?.trim()
+
+    const profileSection =
+      voiceOverride || forbiddenTerms.length || requiredDisclaimers.length
+        ? `\n═══ PERFIL DE MARCA DO CLIENTE ═══\n${voiceOverride ? `Voz do cliente: ${voiceOverride}\n` : ''}${forbiddenTerms.length ? `Termos proibidos (nunca usar): ${forbiddenTerms.join(', ')}\n` : ''}${requiredDisclaimers.length ? `Disclaimers obrigatórios (incluir no subtitle ou como CTA complementar): ${requiredDisclaimers.join(' | ')}\n` : ''}`
+        : ''
 
     const prompt = `Você é o Copy Director da Multilaser — um dos maiores copywriters do Brasil especializado em materiais comerciais B2B e B2C.
 
@@ -133,7 +153,7 @@ Canal de venda: ${input.channel}
 ═══ PERFIL DE TOM PARA "${input.category.toUpperCase()}" ═══
 Tom: ${toneData.tone}
 Persona de voz: ${toneData.voice}
-CTAs sugeridos para ${input.channel}: ${ctaExamples}
+CTAs sugeridos para ${input.channel}: ${ctaExamples}${profileSection}
 
 ═══ AS 3 ABORDAGENS OBRIGATÓRIAS ═══
 

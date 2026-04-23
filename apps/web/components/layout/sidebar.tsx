@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { useUnreadCount } from '@/lib/hooks/use-notifications'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 import {
   LayoutDashboard, Layers, Presentation, Library,
   Package, CheckSquare, Image, FileSliders, Wand2, Activity, FolderSync,
-  PanelLeftClose, PanelLeft,
+  PanelLeftClose, PanelLeft, LogOut,
 } from 'lucide-react'
 
 const navSections = [
@@ -41,6 +44,8 @@ const navSections = [
 export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const { data: unread } = useUnreadCount()
+  const unreadCount = unread?.count ?? 0
 
   return (
     <aside
@@ -102,6 +107,22 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* Notifications + Logout */}
+      <div className="border-t border-white/10 p-1 space-y-0.5">
+        <NotificationBell collapsed={collapsed} unreadCount={unreadCount} />
+        <button
+          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          title={collapsed ? 'Sair' : undefined}
+          className={cn(
+            'flex w-full items-center gap-2 px-3 py-1.5 text-micro text-white/60 hover:text-white/90 hover:bg-white/[0.06] transition-colors duration-200 mx-0 rounded-micro',
+            collapsed && 'justify-center',
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Sair</span>}
+        </button>
+      </div>
     </aside>
   )
 }

@@ -216,8 +216,59 @@ async function main() {
     },
   })
 
+  // ─── Tone Presets (Brand Governance) ────────────────────────────────────
+  const tonePresets: Array<{ category: string; tone: string; voice: string }> = [
+    { category: 'gamer', tone: 'intenso, provocador, cheio de adrenalina — fala com quem vive para ganhar', voice: 'guerreiro digital implacável' },
+    { category: 'áudio', tone: 'sensorial, evocativo, quase poético — desperta emoções e memórias através do som', voice: 'maestro da experiência sonora' },
+    { category: 'smartphone', tone: 'conectado, dinâmico e aspiracional — a vida na palma da mão, sem limites', voice: 'companheiro do estilo de vida moderno' },
+    { category: 'notebook', tone: 'produtivo, inteligente e confiável — fala com quem precisa de desempenho real', voice: 'parceiro de alta performance' },
+    { category: 'câmera', tone: 'criativo, apaixonado, artístico — para quem vê o mundo de um jeito especial', voice: 'contador de histórias visuais' },
+    { category: 'smart home', tone: 'moderno, prático e futurista — o conforto inteligente que você sempre quis', voice: 'arquiteto do lar inteligente' },
+    { category: 'fitness', tone: 'motivador, enérgico e desafiador — empurra os limites, celebra cada conquista', voice: 'coach pessoal incansável' },
+    { category: 'ferramenta', tone: 'direto, confiável e robusto — fala com quem faz acontecer no mundo real', voice: 'mestre do ofício' },
+    { category: 'cozinha', tone: 'acolhedor, saboroso e inspirador — cozinhar é um ato de amor', voice: 'chef do cotidiano' },
+    { category: 'eletrodoméstico', tone: 'prático, eficiente e reassegurador — facilita a vida e economiza tempo', voice: 'assistente silencioso do lar' },
+  ]
+
+  for (const p of tonePresets) {
+    await prisma.tonePreset.upsert({
+      where: { category: p.category },
+      update: p,
+      create: p,
+    })
+  }
+
+  // ─── Channel CTA Presets ─────────────────────────────────────────────────
+  const ctaPresets: Array<{ channel: string; ctas: string[] }> = [
+    {
+      channel: 'Varejo',
+      ctas: ['Compre agora e economize', 'Adquira na loja mais próxima', 'Leve para casa hoje', 'Aproveite a oferta da loja'],
+    },
+    {
+      channel: 'Distribuidor',
+      ctas: ['Solicite proposta comercial', 'Fale com nosso representante', 'Consulte tabela de preços', 'Peça seu kit demonstração'],
+    },
+    {
+      channel: 'Varejo Premium',
+      ctas: ['Experimente antes de comprar', 'Consulte nosso especialista', 'Agende uma demonstração exclusiva', 'Descubra o premium Multilaser'],
+    },
+    {
+      channel: 'E-commerce',
+      ctas: ['Compre com 1 clique', 'Adicione ao carrinho agora', 'Frete grátis — compre já', 'Aproveite no site oficial'],
+    },
+  ]
+
+  for (const p of ctaPresets) {
+    await prisma.channelCtaPreset.upsert({
+      where: { channel: p.channel },
+      update: { ctas: p.ctas as any },
+      create: { channel: p.channel, ctas: p.ctas as any },
+    })
+  }
+
   console.log('✅ Seed completed.')
   console.log('   Users: 2 | Clients: 4 | Brand Assets: 2 | Templates: 7')
+  console.log(`   TonePresets: ${tonePresets.length} | ChannelCTAs: ${ctaPresets.length}`)
   console.log('   Products will be created automatically from Google Drive sync.')
 }
 

@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { CanvasRenderer, type ZonesConfig } from './canvas-renderer'
+import { EditableText } from './editable-text'
 
 export interface SlideContent {
   type: string
@@ -21,6 +22,8 @@ interface PresentationSlideCanvasProps {
   zonesConfig?: ZonesConfig
   className?: string
   compact?: boolean
+  editable?: boolean
+  onContentChange?: (field: string, value: any) => void
 }
 
 const SLIDE_TYPE_LABELS: Record<string, string> = {
@@ -36,10 +39,14 @@ export function PresentationSlideCanvas({
   zonesConfig,
   className,
   compact = false,
+  editable = false,
+  onContentChange,
 }: PresentationSlideCanvasProps) {
   const colors = content.visualDirection?.colors ?? getDefaultColors(content.type)
 
-  // If we have zonesConfig, use the canvas renderer
+  const renderer = (name: string) =>
+    renderPresentationZone(name, content, compact, editable && !compact ? onContentChange : undefined)
+
   if (zonesConfig && Object.keys(zonesConfig).length > 0) {
     return (
       <div className={cn('w-full', className)}>
@@ -48,13 +55,12 @@ export function PresentationSlideCanvas({
           bgColors={colors}
           bgStyle="gradient"
           zones={zonesConfig}
-          renderZone={(name) => renderPresentationZone(name, content, compact)}
+          renderZone={renderer}
         />
       </div>
     )
   }
 
-  // Default: render without zones using built-in layout
   return (
     <div className={cn('w-full', className)}>
       <CanvasRenderer
@@ -62,14 +68,20 @@ export function PresentationSlideCanvas({
         bgColors={colors}
         bgStyle="gradient"
         zones={getDefaultSlideZones(content.type)}
-        renderZone={(name) => renderPresentationZone(name, content, compact)}
+        renderZone={renderer}
       />
     </div>
   )
 }
 
-function renderPresentationZone(name: string, content: SlideContent, compact: boolean) {
+function renderPresentationZone(
+  name: string,
+  content: SlideContent,
+  compact: boolean,
+  onContentChange?: (field: string, value: any) => void,
+) {
   const scale = compact ? 0.7 : 1
+  const editable = !!onContentChange
 
   switch (name) {
     case 'typeLabelZone':
@@ -84,13 +96,23 @@ function renderPresentationZone(name: string, content: SlideContent, compact: bo
     case 'titleZone':
       return (
         <div className="flex h-full flex-col justify-center px-3">
-          {content.title && (
-            <h2
+          {editable ? (
+            <EditableText
+              value={content.title ?? ''}
+              onSave={(v) => onContentChange!('title', v)}
+              tag="h2"
               className="font-extrabold leading-tight text-white drop-shadow-md"
-              style={{ fontSize: `clamp(${10 * scale}px, ${content.type === 'cover' ? 3.5 : 2.5}vw, ${(content.type === 'cover' ? 28 : 20) * scale}px)` }}
-            >
-              {content.title}
-            </h2>
+              placeholder="Título do slide"
+            />
+          ) : (
+            content.title && (
+              <h2
+                className="font-extrabold leading-tight text-white drop-shadow-md"
+                style={{ fontSize: `clamp(${10 * scale}px, ${content.type === 'cover' ? 3.5 : 2.5}vw, ${(content.type === 'cover' ? 28 : 20) * scale}px)` }}
+              >
+                {content.title}
+              </h2>
+            )
           )}
         </div>
       )
@@ -98,15 +120,57 @@ function renderPresentationZone(name: string, content: SlideContent, compact: bo
     case 'taglineZone':
       return (
         <div className="flex h-full items-center px-3">
-          {content.subtitle && (
-            <p className="text-white/70 italic" style={{ fontSize: `clamp(${8 * scale}px, 1.3vw, ${12 * scale}px)` }}>
-              {content.subtitle}
-            </p>
+          {editable ? (
+            <EditableText
+              value={content.subtitle ?? ''}
+              onSave={(v) => onContentChange!('subtitle', v)}
+              tag="p"
+              className="text-white/70 italic"
+              placeholder="Subtítulo"
+            />
+          ) : (
+            content.subtitle && (
+              <p className="text-white/70 italic" style={{ fontSize: `clamp(${8 * scale}px, 1.3vw, ${12 * scale}px)` }}>
+                {content.subtitle}
+              </p>
+            )
           )}
         </div>
       )
 
     case 'bodyZone':
+      if (editable) {
+        const body = content.body ?? []
+        return (
+          <div className="flex h-full flex-col justify-start px-3 pt-1 overflow-hidden">
+            {body.map((item, i) => (
+              <div key={i} className="flex items-start gap-1.5 mb-1">
+                <span className="mt-1 flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-full bg-white/15">
+                  <span className="text-[7px] font-bold text-white/80">{i + 1}</span>
+                </span>
+                <EditableText
+                  value={item}
+                  onSave={(v) => {
+                    const next = [...body]
+                    if (v.trim()) next[i] = v
+                    else next.splice(i, 1)
+                    onContentChange!('body', next)
+                  }}
+                  tag="span"
+                  className="text-white/85 leading-snug flex-1"
+                  placeholder="Tópico"
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => onContentChange!('body', [...body, 'Novo tópico'])}
+              className="mt-1 text-[9px] text-white/40 hover:text-white/80 text-left self-start"
+            >
+              + adicionar tópico
+            </button>
+          </div>
+        )
+      }
       return (
         <div className="flex h-full flex-col justify-start px-3 pt-1 overflow-hidden">
           {content.body?.map((item, i) => (
@@ -136,6 +200,21 @@ function renderPresentationZone(name: string, content: SlideContent, compact: bo
       )
 
     case 'ctaZone':
+      if (editable) {
+        return (
+          <div className="flex h-full items-center justify-center px-2">
+            <div className="rounded-md bg-white/20 backdrop-blur-sm px-4 py-1.5">
+              <EditableText
+                value={content.cta ?? ''}
+                onSave={(v) => onContentChange!('cta', v || null)}
+                tag="span"
+                className="font-bold text-white"
+                placeholder="CTA"
+              />
+            </div>
+          </div>
+        )
+      }
       return content.cta ? (
         <div className="flex h-full items-center justify-center px-2">
           <div className="rounded-md bg-white/20 backdrop-blur-sm px-4 py-1.5">
@@ -149,7 +228,11 @@ function renderPresentationZone(name: string, content: SlideContent, compact: bo
     case 'logoZone':
       return (
         <div className="flex h-full items-center px-2">
-          <span className="text-[8px] font-bold text-white/40 tracking-[2px]">MULTILASER</span>
+          {content.logoUrl ? (
+            <img src={content.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+          ) : (
+            <span className="text-[8px] font-bold text-white/40 tracking-[2px]">MULTILASER</span>
+          )}
         </div>
       )
 
@@ -163,7 +246,6 @@ function renderPresentationZone(name: string, content: SlideContent, compact: bo
     case 'accentBarZone':
       return <div className="h-full w-full bg-amber-400" />
 
-    // Multi-column zones
     case 'col1Zone':
     case 'col2Zone':
     case 'col3Zone':

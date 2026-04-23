@@ -4,10 +4,17 @@ import { apiFetch } from '@/lib/api'
 
 export type ApprovalStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED'
 
+export interface Annotation {
+  targetField?: string
+  targetSlideOrder?: number
+  comment: string
+}
+
 export interface ApprovalRecord {
   id: string
   status: ApprovalStatus
   comment: string | null
+  annotations?: Annotation[] | null
   approver: { name: string; email: string }
   createdAt: string
 }
@@ -88,13 +95,17 @@ function makeTransitionMutation(
   return function useTransition() {
     const qc = useQueryClient()
     return useMutation({
-      mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
+      mutationFn: ({ id, comment, annotations }: { id: string; comment?: string; annotations?: Annotation[] }) =>
         apiFetch(endpoint(id), {
           method: 'POST',
-          body: JSON.stringify({ comment: comment ?? null }),
+          body: JSON.stringify({
+            comment: comment ?? null,
+            annotations: annotations ?? [],
+          }),
         }),
       onSuccess: (_data, { id }) => {
         invalidateKeys(id).forEach((key) => qc.invalidateQueries({ queryKey: key }))
+        qc.invalidateQueries({ queryKey: ['notifications'] })
       },
     })
   }

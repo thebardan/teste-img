@@ -90,8 +90,23 @@ export function useUpdateSalesSheetContent() {
 export function useRegenerateSalesSheetField() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, field }: { id: string; field: string }) =>
-      apiFetch(`/sales-sheets/${id}/regenerate-field`, { method: 'POST', body: JSON.stringify({ field }) }),
+    mutationFn: ({ id, field, guidance }: { id: string; field: string; guidance?: string }) =>
+      apiFetch(`/sales-sheets/${id}/regenerate-field`, {
+        method: 'POST',
+        body: JSON.stringify({ field, guidance }),
+      }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['sales-sheet', vars.id] }),
+  })
+}
+
+export function useGenerateMoreVariations() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, guidance }: { id: string; guidance?: string }) =>
+      apiFetch(`/sales-sheets/${id}/more-variations`, {
+        method: 'POST',
+        body: JSON.stringify({ guidance }),
+      }),
     onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['sales-sheet', vars.id] }),
   })
 }

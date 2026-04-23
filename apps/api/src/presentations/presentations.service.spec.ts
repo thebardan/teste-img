@@ -46,6 +46,20 @@ const mockBrandGuardian = {
   }),
 }
 
+const mockUsers = {
+  resolveCaller: jest.fn().mockResolvedValue({ id: 'user-system', email: 'admin@multilaser.com.br' }),
+  getSystemUser: jest.fn().mockResolvedValue({ id: 'user-system', email: 'admin@multilaser.com.br' }),
+}
+
+const mockVisualSystem = {
+  generate: jest.fn().mockResolvedValue({
+    palette: { dominant: '#0071e3', accent: '#ff6b00', neutral: '#666', background: '#111', backgroundSecondary: '#222', text: '#fff', textSecondary: '#ccc' },
+    typography: { displayFont: 'Montserrat', bodyFont: 'Inter', scale: { hero: 39, headline: 31, subtitle: 25, body: 20, caption: 16, micro: 13 }, ratio: 1.25 },
+    background: { type: 'gradient-linear', colors: ['#111', '#222', '#0071e3'], angle: 135, overlay: { color: '#000', opacity: 0.3 }, texture: 'none' },
+    mood: { style: 'modern tech', emotionalTone: 'premium', darkMode: true },
+  }),
+}
+
 describe('PresentationsService', () => {
   let service: PresentationsService
 
@@ -55,6 +69,8 @@ describe('PresentationsService', () => {
       mockPrisma as any,
       mockPromptEngine as any,
       mockBrandGuardian as any,
+      mockVisualSystem as any,
+      mockUsers as any,
     )
   })
 

@@ -31,6 +31,7 @@ model User {
   presentations Presentation[]
   approvals     Approval[]
   auditLogs     AuditLog[]
+  notifications Notification[]
 }
 
 model Client {
@@ -39,10 +40,30 @@ model Client {
   segment   String?
   channel   String?
   notes     String?
+  brandProfile Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   presentations Presentation[]
+}
+
+model TonePreset {
+  id        String   @id @default(cuid())
+  category  String   @unique
+  tone      String
+  voice     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChannelCtaPreset {
+  id        String   @id @default(cuid())
+  channel   String   @unique
+  ctas      Json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Product Catalog ─────────────────────────────────────────────────────────
@@ -436,6 +457,7 @@ model Approval {
   approverId     String
   status         ApprovalStatus
   comment        String?
+  annotations    Json?
   createdAt      DateTime       @default(now())
 
   salesSheet   SalesSheet?   @relation(fields: [salesSheetId], references: [id])
@@ -445,6 +467,23 @@ model Approval {
   @@index([salesSheetId])
   @@index([presentationId])
   @@index([approverId])
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String
+  entityType String
+  entityId   String
+  title      String
+  message    String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@index([entityType, entityId])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

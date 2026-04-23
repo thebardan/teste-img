@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useSalesSheet, useDeleteSalesSheet, useUpdateSalesSheetContent, useRegenerateSalesSheetField } from '@/lib/hooks/use-sales-sheets'
+import {
+  useSalesSheet,
+  useDeleteSalesSheet,
+  useUpdateSalesSheetContent,
+  useRegenerateSalesSheetField,
+  useGenerateMoreVariations,
+} from '@/lib/hooks/use-sales-sheets'
 import {
   useExportSalesSheetPdf,
   useSalesSheetArtifacts,
@@ -17,9 +23,10 @@ import {
   useSalesSheetApprovals,
 } from '@/lib/hooks/use-approvals'
 import { StatusActionsPanel } from '@/components/approvals/status-actions-panel'
+import { VersionDiff } from '@/components/approvals/version-diff'
 import { QAPanel } from '@/components/qa/qa-panel'
 import { useQASalesSheet } from '@/lib/hooks/use-qa'
-import { useGenerateArt } from '@/lib/hooks/use-art'
+import { useGenerateArt, useGenerateArtBatch } from '@/lib/hooks/use-art'
 import { SalesSheetCanvas } from '@/components/canvas/sales-sheet-canvas'
 import { CanvasToolbar } from '@/components/canvas/canvas-toolbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,9 +62,11 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const approvalBusy = submitting || approving || rejecting || archiving
   const { mutateAsync: runQA, isPending: runningQA } = useQASalesSheet()
   const { mutateAsync: generateArt, isPending: generatingArt, data: artResult } = useGenerateArt()
+  const { mutateAsync: generateArtBatch, isPending: generatingArtBatch, data: artBatchResult } = useGenerateArtBatch()
   const { mutateAsync: deleteMut, isPending: deleting } = useDeleteSalesSheet()
   const { mutateAsync: updateContent } = useUpdateSalesSheetContent()
   const { mutateAsync: regenerateField, isPending: regenerating } = useRegenerateSalesSheetField()
+  const { mutateAsync: generateMore, isPending: generatingMore } = useGenerateMoreVariations()
   const router = useRouter()
   const [artPrompt, setArtPrompt] = useState('')
   const [showDetails, setShowDetails] = useState(false)
@@ -161,9 +170,10 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <CanvasToolbar
-                  onRegenerateHeadline={() => regenerateField({ id, field: 'headline' })}
-                  onRegenerateBenefits={() => regenerateField({ id, field: 'benefits' })}
+                  onRegenerate={(field, guidance) => regenerateField({ id, field, guidance })}
+                  onGenerateMoreVariations={(guidance) => generateMore({ id, guidance })}
                   isRegenerating={regenerating}
+                  isGeneratingMore={generatingMore}
                 />
                 <SalesSheetCanvas
                   content={activeContent}
@@ -174,6 +184,12 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   orientation={orientation as 'landscape' | 'portrait'}
                   editable
                   onContentChange={(field, value) => updateContent({ id, content: { [field]: value } })}
+                  backgroundImageUrl={
+                    content?.useArtAsBackground
+                      ? artResult?.artImageUrl
+                        ?? (latestVersion?.artImageKey ? `/api/storage/${latestVersion.artImageKey}` : undefined)
+                      : undefined
+                  }
                 />
               </CardContent>
             </Card>
@@ -182,13 +198,50 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           {/* Art Generation */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-accent" />
-                <CardTitle className="text-sm">Arte Final (Gemini)</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm">Arte Final (Gemini)</CardTitle>
+                </div>
+                {(artResult?.artImageUrl || latestVersion?.artImageKey || (artBatchResult?.length ?? 0) > 0) && (
+                  <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
+                    <input
+                      type="checkbox"
+                      checked={!!content?.useArtAsBackground}
+                      onChange={(e) =>
+                        updateContent({ id, content: { useArtAsBackground: e.target.checked } })
+                      }
+                    />
+                    usar como fundo do canvas
+                  </label>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              {(artResult?.artImageUrl || latestVersion?.artImageKey) && (
+              {artBatchResult && artBatchResult.length > 1 && (
+                <div className="mb-4">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-tertiary">
+                    {artBatchResult.length} variações — clique para usar
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {artBatchResult.map((r, i) => (
+                      <button
+                        key={r.artImageKey}
+                        onClick={() =>
+                          updateContent({ id, content: { selectedArtKey: r.artImageKey, useArtAsBackground: true } })
+                        }
+                        className={`rounded overflow-hidden border-2 transition-all ${
+                          content?.selectedArtKey === r.artImageKey ? 'border-accent' : 'border-border hover:border-fg-tertiary'
+                        }`}
+                      >
+                        <img src={r.artImageUrl} alt={`Art ${i + 1}`} className="aspect-[4/3] w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(artResult?.artImageUrl || latestVersion?.artImageKey) && !artBatchResult && (
                 <div className="mb-4 rounded-lg overflow-hidden bg-black/[0.03]">
                   <img
                     src={artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`}
@@ -202,23 +255,35 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   </p>
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="space-y-2">
                 <input
                   type="text"
                   value={artPrompt}
                   onChange={(e) => setArtPrompt(e.target.value)}
                   placeholder="Ajustes opcionais (ex: fundo branco, produto centralizado...)"
-                  className="flex-1 rounded-md border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
+                  className="w-full rounded-md border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
                 />
-                <Button
-                  onClick={() => generateArt({ salesSheetId: id, prompt: artPrompt || undefined })}
-                  loading={generatingArt}
-                  variant="primary"
-                  size="md"
-                >
-                  <ImageIcon className="h-4 w-4" />
-                  Gerar arte
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => generateArt({ salesSheetId: id, prompt: artPrompt || undefined })}
+                    loading={generatingArt}
+                    variant="primary"
+                    size="md"
+                    className="flex-1"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Gerar 1 arte
+                  </Button>
+                  <Button
+                    onClick={() => generateArtBatch({ salesSheetId: id, count: 3, prompt: artPrompt || undefined })}
+                    loading={generatingArtBatch}
+                    variant="ghost"
+                    size="md"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Gerar 3 variações
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -231,9 +296,10 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           <StatusActionsPanel
             currentStatus={sheet.status as any}
             history={approvalHistory}
+            entityKind="salesSheet"
             onSubmit={() => submitMut({ id })}
             onApprove={() => approveMut({ id })}
-            onReject={(comment) => rejectMut({ id, comment })}
+            onReject={({ comment, annotations }) => rejectMut({ id, comment, annotations })}
             onArchive={() => archiveMut({ id })}
             isLoading={approvalBusy}
           />
@@ -272,8 +338,33 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           {content?.visualDirection && (
             <VisualDirectionPanel
               visualDirection={content.visualDirection}
+              visualSystem={content.visualSystem}
               onUpdate={(vd) => updateContent({ id, content: { visualDirection: vd } })}
+              onUpdateSystem={(vs) => updateContent({ id, content: { visualSystem: vs } })}
             />
+          )}
+
+          {/* Layout Alternatives */}
+          {Array.isArray(content?.layoutAlternatives) && content.layoutAlternatives.length > 1 && (
+            <LayoutSwapPanel
+              layouts={content.layoutAlternatives}
+              selectedIndex={content.selectedLayoutIndex ?? 0}
+              onSelect={(idx) => {
+                const alt = content.layoutAlternatives[idx]
+                updateContent({
+                  id,
+                  content: {
+                    selectedLayoutIndex: idx,
+                    layout: { ...(content.layout ?? {}), zones: alt.zones },
+                  },
+                })
+              }}
+            />
+          )}
+
+          {/* Version Diff */}
+          {sheet.versions && sheet.versions.length > 1 && (
+            <VersionDiff versions={sheet.versions as any} kind="salesSheet" />
           )}
 
           {/* Collapsible Details */}
@@ -438,15 +529,24 @@ const STYLE_OPTIONS = [
 
 function VisualDirectionPanel({
   visualDirection,
+  visualSystem,
   onUpdate,
+  onUpdateSystem,
 }: {
   visualDirection: { style?: string; colors?: string[]; emotionalTone?: string; imageAmbiance?: string; background?: string }
+  visualSystem?: any
   onUpdate: (vd: typeof visualDirection) => void
+  onUpdateSystem?: (vs: any) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [style, setStyle] = useState(visualDirection.style ?? '')
   const [colors, setColors] = useState<string[]>(visualDirection.colors ?? [])
   const [tone, setTone] = useState(visualDirection.emotionalTone ?? '')
+  const [displayFont, setDisplayFont] = useState(visualSystem?.typography?.displayFont ?? '')
+  const [bodyFont, setBodyFont] = useState(visualSystem?.typography?.bodyFont ?? '')
+  const [bgType, setBgType] = useState<string>(visualSystem?.background?.type ?? 'gradient-linear')
+  const [bgTexture, setBgTexture] = useState<string>(visualSystem?.background?.texture ?? 'none')
+  const [bgAngle, setBgAngle] = useState<number>(visualSystem?.background?.angle ?? 135)
 
   function handleSave() {
     onUpdate({
@@ -455,6 +555,22 @@ function VisualDirectionPanel({
       colors,
       emotionalTone: tone,
     })
+    if (onUpdateSystem && visualSystem) {
+      onUpdateSystem({
+        ...visualSystem,
+        typography: {
+          ...visualSystem.typography,
+          displayFont: displayFont || visualSystem.typography?.displayFont,
+          bodyFont: bodyFont || visualSystem.typography?.bodyFont,
+        },
+        background: {
+          ...visualSystem.background,
+          type: bgType,
+          texture: bgTexture,
+          angle: bgAngle,
+        },
+      })
+    }
     setEditing(false)
   }
 
@@ -542,6 +658,89 @@ function VisualDirectionPanel({
               />
             </div>
 
+            {visualSystem && (
+              <>
+                {/* Typography */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Display Font</label>
+                    <input
+                      type="text"
+                      value={displayFont}
+                      onChange={(e) => setDisplayFont(e.target.value)}
+                      placeholder="Montserrat"
+                      className="w-full rounded-comfortable border border-border bg-btn-default px-2 py-1 text-micro outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Body Font</label>
+                    <input
+                      type="text"
+                      value={bodyFont}
+                      onChange={(e) => setBodyFont(e.target.value)}
+                      placeholder="Inter"
+                      className="w-full rounded-comfortable border border-border bg-btn-default px-2 py-1 text-micro outline-none focus:ring-2 focus:ring-accent"
+                    />
+                  </div>
+                </div>
+
+                {/* Background */}
+                <div>
+                  <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Fundo</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['solid', 'gradient-linear', 'gradient-radial', 'mesh'].map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setBgType(t)}
+                        className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
+                          bgType === t
+                            ? 'bg-accent text-white'
+                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Textura</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['none', 'noise', 'grid', 'dots'].map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setBgTexture(t)}
+                        className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
+                          bgTexture === t
+                            ? 'bg-accent text-white'
+                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {bgType !== 'solid' && (
+                  <div>
+                    <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">
+                      Ângulo gradiente: {bgAngle}°
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={360}
+                      value={bgAngle}
+                      onChange={(e) => setBgAngle(Number(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
             <Button size="sm" onClick={handleSave} className="w-full">
               Salvar Direção Visual
             </Button>
@@ -560,6 +759,46 @@ function VisualDirectionPanel({
             <p><span className="text-fg-tertiary">Tom:</span> {visualDirection.emotionalTone || '—'}</p>
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Layout Swap Panel ────────────────────────────────────────────────────────
+
+function LayoutSwapPanel({
+  layouts,
+  selectedIndex,
+  onSelect,
+}: {
+  layouts: Array<{ composition: string }>
+  selectedIndex: number
+  onSelect: (index: number) => void
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Palette className="h-4 w-4 text-fg-secondary" />
+          <CardTitle className="text-sm">Layout</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-1.5">
+          {layouts.map((layout, i) => (
+            <button
+              key={i}
+              onClick={() => onSelect(i)}
+              className={`rounded-md border-2 p-2 text-center text-[10px] transition-all ${
+                i === selectedIndex
+                  ? 'border-accent bg-accent/[0.08] text-accent font-medium'
+                  : 'border-border hover:border-fg-tertiary'
+              }`}
+            >
+              <p className="truncate">{layout.composition ?? `Layout ${i + 1}`}</p>
+            </button>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

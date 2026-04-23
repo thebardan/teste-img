@@ -75,6 +75,11 @@ const mockVisualSystem = {
   }),
 }
 
+const mockUsers = {
+  resolveCaller: jest.fn().mockResolvedValue({ id: 'user-system', email: 'admin@multilaser.com.br' }),
+  getSystemUser: jest.fn().mockResolvedValue({ id: 'user-system', email: 'admin@multilaser.com.br' }),
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SalesSheetsService', () => {
@@ -88,6 +93,7 @@ describe('SalesSheetsService', () => {
       mockVisualSystem as any,
       mockBrandGuardian as any,
       mockCopywriter as any,
+      mockUsers as any,
     )
   })
 

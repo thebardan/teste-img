@@ -2,6 +2,7 @@ import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common'
 import { ApprovalsService } from './approvals.service'
 import { ApprovalStatus } from '@prisma/client'
 import { ReviewActionDto } from './dto/review-action.dto'
+import { CurrentUser, type RequestUser } from '../auth/current-user.decorator'
 
 @Controller('approvals')
 export class ApprovalsController {
@@ -27,23 +28,50 @@ export class ApprovalsController {
   }
 
   @Post('sales-sheet/:id/submit')
-  submitSalesSheet(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.submitSalesSheetForReview(id, dto.comment)
+  submitSalesSheet(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.submitSalesSheetForReview(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('sales-sheet/:id/approve')
-  approveSalesSheet(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.approveSalesSheet(id, dto.comment)
+  approveSalesSheet(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.approveSalesSheet(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('sales-sheet/:id/reject')
-  rejectSalesSheet(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.rejectSalesSheet(id, dto.comment)
+  rejectSalesSheet(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.rejectSalesSheet(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('sales-sheet/:id/archive')
-  archiveSalesSheet(@Param('id') id: string) {
-    return this.service.archiveSalesSheet(id)
+  archiveSalesSheet(
+    @Param('id') id: string,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.archiveSalesSheet(id, { callerEmail: caller?.email })
   }
 
   // ─── Presentation ───────────────────────────────────────────────────────────
@@ -54,22 +82,49 @@ export class ApprovalsController {
   }
 
   @Post('presentation/:id/submit')
-  submitPresentation(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.submitPresentationForReview(id, dto.comment)
+  submitPresentation(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.submitPresentationForReview(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('presentation/:id/approve')
-  approvePresentation(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.approvePresentation(id, dto.comment)
+  approvePresentation(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.approvePresentation(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('presentation/:id/reject')
-  rejectPresentation(@Param('id') id: string, @Body() dto: ReviewActionDto) {
-    return this.service.rejectPresentation(id, dto.comment)
+  rejectPresentation(
+    @Param('id') id: string,
+    @Body() dto: ReviewActionDto,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.rejectPresentation(id, {
+      callerEmail: caller?.email,
+      comment: dto.comment,
+      annotations: dto.annotations,
+    })
   }
 
   @Post('presentation/:id/archive')
-  archivePresentation(@Param('id') id: string) {
-    return this.service.archivePresentation(id)
+  archivePresentation(
+    @Param('id') id: string,
+    @CurrentUser() caller: RequestUser | null,
+  ) {
+    return this.service.archivePresentation(id, { callerEmail: caller?.email })
   }
 }

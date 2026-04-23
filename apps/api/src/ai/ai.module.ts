@@ -10,9 +10,10 @@ import { VisualDirectorAgent } from './agents/visual-director.agent'
 import { VisualSystemAgent } from './agents/visual-system.agent'
 import { QAAgent } from './agents/qa.agent'
 import { BrandAssetsModule } from '../brand-assets/brand-assets.module'
+import { BrandGovernanceModule } from '../brand-governance/brand-governance.module'
 
 @Module({
-  imports: [BrandAssetsModule],
+  imports: [BrandAssetsModule, BrandGovernanceModule],
   providers: [
     GeminiTextProvider,
     GeminiImageProvider,

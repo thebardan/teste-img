@@ -9,13 +9,23 @@ export interface QACheck {
   level: QACheckLevel
   message: string
   passed: boolean
+  explanation?: string
+  fixSuggestion?: string
+  targetField?: string
+}
+
+export interface AiFinding {
+  field?: string
+  severity: QACheckLevel
+  message: string
+  fixSuggestion?: string
 }
 
 export interface QAResult {
   score: number
   passed: boolean
   checks: QACheck[]
-  aiFindings: string[]
+  aiFindings: AiFinding[]
   checkedAt: string
 }
 

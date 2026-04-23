@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common'
 import { PresentationsController } from './presentations.controller'
 import { PresentationsService } from './presentations.service'
 import { AiModule } from '../ai/ai.module'
+import { UsersModule } from '../users/users.module'
 
 @Module({
-  imports: [AiModule],
+  imports: [AiModule, UsersModule],
   controllers: [PresentationsController],
   providers: [PresentationsService],
   exports: [PresentationsService],

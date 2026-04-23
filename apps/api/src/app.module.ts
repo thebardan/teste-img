@@ -18,6 +18,8 @@ import { QAModule } from './qa/qa.module'
 import { DriveSyncModule } from './drive-sync/drive-sync.module'
 import { AuthModule } from './auth/auth.module'
 import { UsersModule } from './users/users.module'
+import { NotificationsModule } from './notifications/notifications.module'
+import { BrandGovernanceModule } from './brand-governance/brand-governance.module'
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
 
 @Module({
@@ -29,6 +31,8 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
     }),
     AuthModule,
     UsersModule,
+    NotificationsModule,
+    BrandGovernanceModule,
     DatabaseModule,
     QueueModule,
     StorageModule,

@@ -215,8 +215,8 @@ Gere copy refinado mantendo o título mas enriquecendo o conteúdo.
 Responda APENAS com JSON:
 {"title": "...", "subtitle": "...", "body": ["...", "..."]}`,
 
-  'qa-check': `Você é um especialista em QA de materiais comerciais da Multilaser.
-Analise o conteúdo abaixo e identifique problemas de qualidade.
+  'qa-check': `Você é um editor-chefe crítico da Multilaser que audita materiais comerciais.
+Analise o conteúdo abaixo e aponte problemas reais de qualidade. Evite comentários genéricos.
 
 Tipo: {{type}}
 Assunto: {{subject}}
@@ -224,14 +224,27 @@ Conteúdo:
 {{content}}
 
 Verifique:
-- Ortografia e gramática em português
-- Claims exagerados ou não verificáveis
-- Tom inconsistente com branding profissional
-- Texto confuso ou pouco persuasivo
-- Inconsistências entre título e conteúdo
+- Ortografia e gramática em português brasileiro
+- Claims exagerados ou não verificáveis ("o melhor do mercado", "incrível" sem prova)
+- Tom inconsistente com branding profissional Multilaser
+- Texto confuso, pouco persuasivo ou redundante
+- Inconsistências entre título, subtítulo e benefícios
+- CTA genérico ou desalinhado com o canal
+- Para apresentações: continuidade narrativa entre slides; cada slide identificado como slide/0..N no conteúdo
 
-Responda APENAS com JSON (array vazio se não houver problemas):
-{"issues": ["descrição do problema 1", "descrição do problema 2"]}`,
+Para cada problema aponte o campo específico (headline, subtitle, benefits, cta, slide/0, slide/1, ...).
+
+Responda APENAS com JSON (findings vazio se não houver problemas reais):
+{
+  "findings": [
+    {
+      "field": "headline",
+      "severity": "WARNING",
+      "message": "Headline usa claim genérico 'o melhor' sem diferenciação.",
+      "fixSuggestion": "Substitua por diferencial concreto: 'Autonomia 3x maior que a concorrência'."
+    }
+  ]
+}`,
 
   'copy-director': `{{prompt}}`,
 

@@ -8,13 +8,23 @@ export interface QACheck {
   level: QACheckLevel
   message: string
   passed: boolean
+  explanation?: string  // why this matters
+  fixSuggestion?: string // how to fix
+  targetField?: string  // which content field the check relates to
+}
+
+export interface AiFinding {
+  field?: string          // headline, subtitle, benefits, cta, slide/N
+  severity: QACheckLevel
+  message: string
+  fixSuggestion?: string
 }
 
 export interface QAResult {
   score: number          // 0–100
   passed: boolean        // score >= 70
   checks: QACheck[]
-  aiFindings: string[]   // from LLM
+  aiFindings: AiFinding[]
   checkedAt: string
 }
 
@@ -26,19 +36,34 @@ export class QAAgent {
 
   async checkSalesSheet(content: Record<string, any>, productName: string): Promise<QAResult> {
     const checks: QACheck[] = [
-      this.checkPresent('headline', content.headline, 'Headline ausente'),
-      this.checkLength('headline', content.headline, 3, 10, 'Headline deve ter 3–10 palavras'),
-      this.checkPresent('subtitle', content.subtitle, 'Subtítulo ausente'),
-      this.checkArrayCount('benefits', content.benefits, 3, 5, 'Benefícios devem ter 3–5 itens'),
+      this.checkPresent('headline', content.headline, 'Headline ausente', 'ERROR', {
+        explanation: 'Headline é o elemento de maior impacto — sem ele a lâmina não comunica nada.',
+        fixSuggestion: 'Gere um headline com o Copy Director ou digite manualmente.',
+      }),
+      this.checkLength('headline', content.headline, 3, 10, 'Headline deve ter 3–10 palavras', {
+        explanation: 'Headlines com 3-10 palavras são lidos em 1-2 segundos — crítico para materiais comerciais.',
+      }),
+      this.checkPresent('subtitle', content.subtitle, 'Subtítulo ausente', 'ERROR', {
+        fixSuggestion: 'Subtítulo amplia o headline e apresenta o produto.',
+      }),
+      this.checkArrayCount('benefits', content.benefits, 3, 5, 'Benefícios devem ter 3–5 itens', {
+        explanation: '3-5 benefícios é o sweet-spot de retenção — menos parece raso, mais vira ruído.',
+      }),
       this.checkBenefitLength('benefits', content.benefits),
-      this.checkPresent('cta', content.cta, 'CTA ausente — obrigatório'),
+      this.checkPresent('cta', content.cta, 'CTA ausente — obrigatório', 'ERROR', {
+        fixSuggestion: 'CTA direciona a próxima ação. Ex: "Compre agora", "Saiba mais".',
+      }),
       this.checkCtaLength('cta', content.cta),
-      this.checkPresent('qrUrl', content.qrUrl, 'QR URL ausente', 'WARNING'),
+      this.checkPresent('qrUrl', content.qrUrl, 'QR URL ausente', 'WARNING', {
+        fixSuggestion: 'Adicione URL para gerar QR code automaticamente.',
+      }),
       this.checkUrlFormat('qrUrl', content.qrUrl),
-      this.checkPresent('logoUrl', content.logoUrl, 'Logo não selecionado', 'WARNING'),
+      this.checkPresent('logoUrl', content.logoUrl, 'Logo não selecionado', 'WARNING', {
+        fixSuggestion: 'Selecione logo no painel Brand Assets ou no picker da lâmina.',
+      }),
     ]
 
-    const aiFindings = await this.runAiCheck(
+    const aiFindings = await this.runAiCheckStructured(
       productName,
       `Headline: ${content.headline ?? '—'}\nSubtítulo: ${content.subtitle ?? '—'}\nBenefícios: ${(content.benefits ?? []).join(', ')}\nCTA: ${content.cta ?? '—'}`,
       'sales-sheet',
@@ -66,31 +91,51 @@ export class QAAgent {
 
     const slidesSummary = slides
       .sort((a, b) => a.order - b.order)
-      .map((s) => `[${s.content.type}] ${s.content.title ?? '—'}: ${(s.content.body ?? []).join('; ')}`)
+      .map((s) => `[slide/${s.order}] [${s.content.type}] ${s.content.title ?? '—'}: ${(s.content.body ?? []).join('; ')}`)
       .join('\n')
 
-    const aiFindings = await this.runAiCheck(title, slidesSummary, 'presentation')
+    const aiFindings = await this.runAiCheckStructured(title, slidesSummary, 'presentation')
 
     return this.buildResult(checks, aiFindings)
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
-  private checkPresent(rule: string, value: any, msg: string, level: QACheckLevel = 'ERROR'): QACheck {
+  private checkPresent(
+    rule: string,
+    value: any,
+    msg: string,
+    level: QACheckLevel = 'ERROR',
+    extras: Partial<Pick<QACheck, 'explanation' | 'fixSuggestion'>> = {},
+  ): QACheck {
     const passed = !!value && String(value).trim().length > 0
-    return { rule, level, message: msg, passed }
+    return { rule, level, message: msg, passed, targetField: rule, ...extras }
   }
 
-  private checkLength(rule: string, text: string | undefined, min: number, max: number, msg: string): QACheck {
+  private checkLength(
+    rule: string,
+    text: string | undefined,
+    min: number,
+    max: number,
+    msg: string,
+    extras: Partial<Pick<QACheck, 'explanation' | 'fixSuggestion'>> = {},
+  ): QACheck {
     const words = (text ?? '').split(/\s+/).filter(Boolean).length
     const passed = words >= min && words <= max
-    return { rule, level: 'WARNING', message: `${msg} (${words} palavras)`, passed }
+    return { rule, level: 'WARNING', message: `${msg} (${words} palavras)`, passed, targetField: rule, ...extras }
   }
 
-  private checkArrayCount(rule: string, arr: any[] | undefined, min: number, max: number, msg: string): QACheck {
+  private checkArrayCount(
+    rule: string,
+    arr: any[] | undefined,
+    min: number,
+    max: number,
+    msg: string,
+    extras: Partial<Pick<QACheck, 'explanation' | 'fixSuggestion'>> = {},
+  ): QACheck {
     const count = (arr ?? []).length
     const passed = count >= min && count <= max
-    return { rule, level: 'ERROR', message: `${msg} (${count} encontrado(s))`, passed }
+    return { rule, level: 'ERROR', message: `${msg} (${count} encontrado(s))`, passed, targetField: rule, ...extras }
   }
 
   private checkBenefitLength(rule: string, benefits: string[] | undefined): QACheck {
@@ -152,27 +197,51 @@ export class QAAgent {
     }
   }
 
-  private async runAiCheck(subject: string, content: string, type: 'sales-sheet' | 'presentation'): Promise<string[]> {
+  private async runAiCheckStructured(
+    subject: string,
+    content: string,
+    type: 'sales-sheet' | 'presentation',
+  ): Promise<AiFinding[]> {
     try {
       const result = await this.promptEngine.run('qa-check', { subject, content, type })
       const parsed = result.parsedOutput as any
-      return Array.isArray(parsed?.issues) ? parsed.issues : []
+
+      // Support both legacy {issues: string[]} and new {findings: AiFinding[]}
+      if (Array.isArray(parsed?.findings)) {
+        return parsed.findings
+          .filter((f: any) => typeof f?.message === 'string')
+          .map((f: any): AiFinding => ({
+            field: typeof f.field === 'string' ? f.field : undefined,
+            severity: ['ERROR', 'WARNING', 'INFO'].includes(f.severity) ? f.severity : 'WARNING',
+            message: f.message,
+            fixSuggestion: typeof f.fixSuggestion === 'string' ? f.fixSuggestion : undefined,
+          }))
+      }
+      if (Array.isArray(parsed?.issues)) {
+        return parsed.issues
+          .filter((msg: any) => typeof msg === 'string')
+          .map((msg: string): AiFinding => ({ severity: 'WARNING', message: msg }))
+      }
+      return []
     } catch {
       return []
     }
   }
 
-  private buildResult(checks: QACheck[], aiFindings: string[]): QAResult {
+  private buildResult(checks: QACheck[], aiFindings: AiFinding[]): QAResult {
     const errors   = checks.filter((c) => !c.passed && c.level === 'ERROR').length
     const warnings = checks.filter((c) => !c.passed && c.level === 'WARNING').length
-    const total    = checks.length
+    const aiErrors = aiFindings.filter((f) => f.severity === 'ERROR').length
+    const aiWarnings = aiFindings.filter((f) => f.severity === 'WARNING').length
 
-    // Score: start at 100, subtract per failed check weighted by level
-    const score = Math.max(0, Math.round(100 - errors * 15 - warnings * 5 - aiFindings.length * 3))
+    const score = Math.max(
+      0,
+      Math.round(100 - errors * 15 - warnings * 5 - aiErrors * 10 - aiWarnings * 3),
+    )
 
     return {
       score,
-      passed: score >= 70 && errors === 0,
+      passed: score >= 70 && errors === 0 && aiErrors === 0,
       checks,
       aiFindings,
       checkedAt: new Date().toISOString(),

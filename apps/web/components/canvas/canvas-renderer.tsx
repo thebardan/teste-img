@@ -20,7 +20,15 @@ interface CanvasRendererProps {
   /** Background colors from visual direction */
   bgColors?: string[]
   /** Background style: gradient or solid */
-  bgStyle?: 'gradient' | 'solid'
+  bgStyle?: 'gradient' | 'solid' | 'gradient-radial' | 'mesh'
+  /** Gradient angle in degrees (for linear) */
+  bgAngle?: number
+  /** Background texture overlay */
+  bgTexture?: 'none' | 'noise' | 'grid' | 'dots'
+  /** Optional image URL to use as canvas background (overrides bgColors) */
+  bgImageUrl?: string
+  /** Opacity of overlay over bg image (for text legibility) */
+  bgImageOverlayOpacity?: number
   /** Zone configurations from template */
   zones: ZonesConfig
   /** Render content for each zone */
@@ -38,6 +46,10 @@ export function CanvasRenderer({
   aspectRatio,
   bgColors,
   bgStyle = 'gradient',
+  bgAngle = 135,
+  bgTexture = 'none',
+  bgImageUrl,
+  bgImageOverlayOpacity = 0.2,
   zones,
   renderZone,
   className,
@@ -66,10 +78,25 @@ export function CanvasRenderer({
   }, [CANVAS_W])
 
   const background = bgColors?.length
-    ? bgStyle === 'gradient'
-      ? `linear-gradient(135deg, ${bgColors.join(', ')})`
-      : bgColors[0]
-    : 'linear-gradient(135deg, #1a1a2e, #16213e)'
+    ? bgStyle === 'solid'
+      ? bgColors[0]
+      : bgStyle === 'gradient-radial'
+        ? `radial-gradient(circle at 30% 30%, ${bgColors.join(', ')})`
+        : bgStyle === 'mesh'
+          ? `radial-gradient(at 20% 20%, ${bgColors[0]} 0%, transparent 50%), radial-gradient(at 80% 30%, ${bgColors[1] ?? bgColors[0]} 0%, transparent 50%), radial-gradient(at 50% 80%, ${bgColors[2] ?? bgColors[0]} 0%, transparent 50%), ${bgColors[0]}`
+          : `linear-gradient(${bgAngle}deg, ${bgColors.join(', ')})`
+    : `linear-gradient(${bgAngle}deg, #1a1a2e, #16213e)`
+
+  const textureOverlay =
+    bgTexture === 'noise'
+      ? 'url("data:image/svg+xml;utf8,<svg xmlns=\\"http://www.w3.org/2000/svg\\" width=\\"80\\" height=\\"80\\"><filter id=\\"n\\"><feTurbulence baseFrequency=\\"0.9\\"/></filter><rect width=\\"100%\\" height=\\"100%\\" filter=\\"url(%23n)\\" opacity=\\"0.25\\"/></svg>")'
+      : bgTexture === 'grid'
+        ? 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)'
+        : bgTexture === 'dots'
+          ? 'radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)'
+          : null
+  const textureSize =
+    bgTexture === 'grid' ? '24px 24px' : bgTexture === 'dots' ? '16px 16px' : undefined
 
   return (
     <div
@@ -87,6 +114,30 @@ export function CanvasRenderer({
           background,
         }}
       >
+        {bgImageUrl && (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${bgImageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+            <div className="absolute inset-0 bg-black" style={{ opacity: bgImageOverlayOpacity }} />
+          </>
+        )}
+        {textureOverlay && !bgImageUrl && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundImage: textureOverlay,
+              backgroundSize: textureSize,
+              opacity: 0.6,
+              mixBlendMode: 'overlay',
+            }}
+          />
+        )}
         {Object.entries(zones).map(([name, zone]) => {
           const left = parsePercent(zone.x)
           const top = parsePercent(zone.y)

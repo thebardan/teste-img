@@ -56,7 +56,7 @@ function QuickActions({ type, id, status }: { type: 'sheet' | 'presentation'; id
 
   async function handleReject() {
     if (!comment.trim()) return
-    await reject.mutateAsync({ id, comment })
+    await reject.mutateAsync({ id, comment, annotations: [] })
     setShowReject(false)
     setComment('')
   }

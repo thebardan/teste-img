@@ -25,6 +25,7 @@ export interface SalesSheetContent {
     imageAmbiance?: string
     emotionalTone?: string
   }
+  visualSystem?: any
 }
 
 interface SalesSheetCanvasProps {
@@ -36,6 +37,7 @@ interface SalesSheetCanvasProps {
   orientation?: 'landscape' | 'portrait'
   editable?: boolean
   onContentChange?: (field: string, value: any) => void
+  backgroundImageUrl?: string
   className?: string
 }
 
@@ -48,10 +50,27 @@ export function SalesSheetCanvas({
   orientation = 'landscape',
   editable = false,
   onContentChange,
+  backgroundImageUrl,
   className,
 }: SalesSheetCanvasProps) {
   const aspectRatio = orientation === 'landscape' ? 297 / 210 : 210 / 297
-  const colors = content.visualDirection?.colors ?? ['#1a1a2e', '#16213e', '#0f3460']
+  const vs: any = (content as any).visualSystem
+  const vsBg = vs?.background
+  const vsPaletteColors = vs?.palette
+    ? [vs.palette.background, vs.palette.backgroundSecondary, vs.palette.dominant].filter(Boolean)
+    : null
+  const colors = (vsPaletteColors && vsPaletteColors.length)
+    ? vsPaletteColors
+    : content.visualDirection?.colors ?? ['#1a1a2e', '#16213e', '#0f3460']
+  const bgStyleMap: Record<string, 'gradient' | 'solid' | 'gradient-radial' | 'mesh'> = {
+    solid: 'solid',
+    'gradient-linear': 'gradient',
+    'gradient-radial': 'gradient-radial',
+    mesh: 'mesh',
+  }
+  const bgStyle = (vsBg?.type && bgStyleMap[vsBg.type]) ?? 'gradient'
+  const bgAngle = typeof vsBg?.angle === 'number' ? vsBg.angle : 135
+  const bgTexture = (vsBg?.texture as 'none' | 'noise' | 'grid' | 'dots') ?? 'none'
   const allImages = productImageUrls?.length ? productImageUrls : productImageUrl ? [productImageUrl] : []
 
   return (
@@ -59,7 +78,10 @@ export function SalesSheetCanvas({
       <CanvasRenderer
         aspectRatio={aspectRatio}
         bgColors={colors}
-        bgStyle="gradient"
+        bgStyle={bgStyle}
+        bgAngle={bgAngle}
+        bgTexture={bgTexture}
+        bgImageUrl={backgroundImageUrl}
         zones={zonesConfig}
         renderZone={(name) => {
           switch (name) {

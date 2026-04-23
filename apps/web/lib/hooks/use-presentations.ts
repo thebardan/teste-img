@@ -70,3 +70,59 @@ export function useGeneratePresentation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['presentations'] }),
   })
 }
+
+export function useUpdateSlideContent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, order, content }: { id: string; order: number; content: Record<string, any> }) =>
+      apiFetch(`/presentations/${id}/slides/${order}/content`, {
+        method: 'PATCH',
+        body: JSON.stringify(content),
+      }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['presentation', vars.id] }),
+  })
+}
+
+export function useRegenerateSlide() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, order }: { id: string; order: number }) =>
+      apiFetch(`/presentations/${id}/slides/${order}/regenerate`, { method: 'POST' }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['presentation', vars.id] }),
+  })
+}
+
+export function useReorderSlides() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, orderedIds }: { id: string; orderedIds: string[] }) =>
+      apiFetch(`/presentations/${id}/slides/reorder`, {
+        method: 'POST',
+        body: JSON.stringify({ orderedIds }),
+      }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['presentation', vars.id] }),
+  })
+}
+
+export type SlideType = 'cover' | 'context' | 'products' | 'benefits' | 'closing'
+
+export function useAddSlide() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, type, afterOrder }: { id: string; type: SlideType; afterOrder?: number }) =>
+      apiFetch(`/presentations/${id}/slides`, {
+        method: 'POST',
+        body: JSON.stringify({ type, afterOrder }),
+      }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['presentation', vars.id] }),
+  })
+}
+
+export function useRemoveSlide() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, order }: { id: string; order: number }) =>
+      apiFetch(`/presentations/${id}/slides/${order}`, { method: 'DELETE' }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: ['presentation', vars.id] }),
+  })
+}

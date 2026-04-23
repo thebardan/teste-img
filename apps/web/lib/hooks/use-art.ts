@@ -20,3 +20,17 @@ export function useGenerateArt() {
     },
   })
 }
+
+export function useGenerateArtBatch() {
+  const qc = useQueryClient()
+  return useMutation<ArtResult[], Error, { salesSheetId: string; count?: number; prompt?: string }>({
+    mutationFn: ({ salesSheetId, count, prompt }) =>
+      apiFetch(`/sales-sheets/${salesSheetId}/generate-art-batch`, {
+        method: 'POST',
+        body: JSON.stringify({ count: count ?? 3, prompt }),
+      }),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['sales-sheet', vars.salesSheetId] })
+    },
+  })
+}
