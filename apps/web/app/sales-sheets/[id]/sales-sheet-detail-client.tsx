@@ -42,7 +42,7 @@ import {
   ShieldCheck, CheckSquare, Layers, GitCompare, Info,
 } from 'lucide-react'
 
-type ToolId = 'ai' | 'photos' | 'visual' | 'layout' | 'logo' | 'art' | 'qa' | 'status' | 'export' | 'diff' | 'details'
+type ToolId = 'variations' | 'ai' | 'photos' | 'visual' | 'layout' | 'logo' | 'art' | 'qa' | 'status' | 'export' | 'diff' | 'details'
 
 interface ToolDef {
   id: ToolId
@@ -80,7 +80,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const router = useRouter()
   const [artPrompt, setArtPrompt] = useState('')
   const [showDetails, setShowDetails] = useState(false)
-  const [activeTool, setActiveTool] = useState<ToolId>('ai')
+  const [activeTool, setActiveTool] = useState<ToolId>('variations')
 
   async function handleDelete() {
     if (!confirm('Tem certeza que deseja excluir esta lâmina?')) return
@@ -187,17 +187,6 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
         </Button>
       </div>
 
-      {/* Variation Selector — Designer Engine */}
-      {hasVariations && (
-        <div className="mb-6">
-          <h2 className="text-caption font-semibold text-fg-secondary mb-3">Escolha uma variação</h2>
-          <VariationSelector
-            variations={content.variations}
-            selectedIndex={selectedIdx}
-            onSelect={(idx) => updateContent({ id, content: { selectedVariation: idx } })}
-          />
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[48px_1fr_340px]">
         {/* Left: Tool Rail — Photoshop-style */}
@@ -238,103 +227,92 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
             </Card>
           )}
 
-          {/* Art Generation */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+        </div>
+
+        {/* Right: Context panel — shows content for active tool */}
+        <div className="space-y-3">
+          {activeTool === 'variations' && hasVariations && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm">Variações</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-2">
+                  <VariationSelector
+                    variations={content.variations}
+                    selectedIndex={selectedIdx}
+                    onSelect={(idx) => updateContent({ id, content: { selectedVariation: idx } })}
+                    className="!grid-cols-1"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTool === 'art' && (
+            <Card>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-accent" />
-                  <CardTitle className="text-sm">Arte Final (Gemini)</CardTitle>
+                  <CardTitle className="text-sm">Arte (Gemini)</CardTitle>
                 </div>
-                {(artResult?.artImageUrl || latestVersion?.artImageKey || (artBatchResult?.length ?? 0) > 0) && (
-                  <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
-                    <input
-                      type="checkbox"
-                      checked={!!content?.useArtAsBackground}
-                      onChange={(e) =>
-                        updateContent({ id, content: { useArtAsBackground: e.target.checked } })
-                      }
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(artResult?.artImageUrl || latestVersion?.artImageKey) && (
+                  <div className="rounded-lg overflow-hidden bg-black/[0.03]">
+                    <img
+                      src={artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`}
+                      alt="Arte gerada"
+                      className="max-h-48 w-full object-contain"
                     />
-                    usar como fundo do canvas
-                  </label>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {artBatchResult && artBatchResult.length > 1 && (
-                <div className="mb-4">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-tertiary">
-                    {artBatchResult.length} variações — clique para usar
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {artBatchResult.map((r, i) => (
-                      <button
-                        key={r.artImageKey}
-                        onClick={() =>
-                          updateContent({ id, content: { selectedArtKey: r.artImageKey, useArtAsBackground: true } })
-                        }
-                        className={`rounded overflow-hidden border-2 transition-all ${
-                          content?.selectedArtKey === r.artImageKey ? 'border-accent' : 'border-border hover:border-fg-tertiary'
-                        }`}
-                      >
-                        <img src={r.artImageUrl} alt={`Art ${i + 1}`} className="aspect-[4/3] w-full object-cover" />
-                      </button>
-                    ))}
                   </div>
-                </div>
-              )}
-
-              {(artResult?.artImageUrl || latestVersion?.artImageKey) && !artBatchResult && (
-                <div className="mb-4 rounded-lg overflow-hidden bg-black/[0.03]">
-                  <img
-                    src={artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`}
-                    alt="Arte gerada"
-                    className="max-h-96 w-full object-contain"
+                )}
+                <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
+                  <input
+                    type="checkbox"
+                    checked={!!content?.useArtAsBackground}
+                    onChange={(e) =>
+                      updateContent({ id, content: { useArtAsBackground: e.target.checked } })
+                    }
                   />
-                  <p className="p-2 text-center text-xs text-fg-secondary">
-                    Gerado em {latestVersion?.artGeneratedAt
-                      ? new Date(latestVersion.artGeneratedAt).toLocaleString('pt-BR')
-                      : 'agora'}
-                  </p>
-                </div>
-              )}
-              <div className="space-y-2">
+                  usar como fundo
+                </label>
                 <input
                   type="text"
                   value={artPrompt}
                   onChange={(e) => setArtPrompt(e.target.value)}
-                  placeholder="Ajustes opcionais (ex: fundo branco, produto centralizado...)"
-                  className="w-full rounded-md border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
+                  placeholder="Ajustes opcionais..."
+                  className="w-full rounded border border-border bg-canvas px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-accent"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={() => generateArt({ salesSheetId: id, prompt: artPrompt || undefined })}
                     loading={generatingArt}
                     variant="primary"
-                    size="md"
+                    size="sm"
                     className="w-full"
                   >
-                    <ImageIcon className="h-4 w-4" />
-                    Gerar 1 arte
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    1 arte
                   </Button>
                   <Button
                     onClick={() => generateArtBatch({ salesSheetId: id, count: 3, prompt: artPrompt || undefined })}
                     loading={generatingArtBatch}
                     variant="primary"
-                    size="md"
+                    size="sm"
                     className="w-full"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Gerar 3 variações
+                    <Sparkles className="h-3.5 w-3.5" />
+                    3 variações
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Right: Context panel — shows content for active tool */}
-        <div className="space-y-3">
           {activeTool === 'ai' && (
             <AIToolsPanel
               onRegenerate={(field, guidance) => regenerateField({ id, field, guidance })}
@@ -499,16 +477,18 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
 function ToolRail({ activeTool, onSelect }: { activeTool: ToolId; onSelect: (id: ToolId) => void }) {
   const tools: ToolDef[] = [
-    { id: 'ai',      label: 'Ferramentas IA',      icon: Wand2 },
-    { id: 'photos',  label: 'Fotos do produto',    icon: Image },
-    { id: 'visual',  label: 'Direção Visual',      icon: Palette },
-    { id: 'layout',  label: 'Layout',              icon: Layers },
-    { id: 'logo',    label: 'Logo',                icon: ImageIcon },
-    { id: 'qa',      label: 'QA / Validação',      icon: ShieldCheck },
-    { id: 'status',  label: 'Aprovação',           icon: CheckSquare },
-    { id: 'export',  label: 'Exportar',            icon: Download },
-    { id: 'diff',    label: 'Diff de versões',     icon: GitCompare },
-    { id: 'details', label: 'Detalhes',            icon: Info },
+    { id: 'variations', label: 'Variações',        icon: Sparkles },
+    { id: 'ai',         label: 'Ferramentas IA',   icon: Wand2 },
+    { id: 'photos',     label: 'Fotos do produto', icon: Image },
+    { id: 'art',        label: 'Arte Gemini',      icon: ImageIcon },
+    { id: 'visual',     label: 'Direção Visual',   icon: Palette },
+    { id: 'layout',     label: 'Layout',           icon: Layers },
+    { id: 'logo',       label: 'Logo',             icon: FileText },
+    { id: 'qa',         label: 'QA / Validação',   icon: ShieldCheck },
+    { id: 'status',     label: 'Aprovação',        icon: CheckSquare },
+    { id: 'export',     label: 'Exportar',         icon: Download },
+    { id: 'diff',       label: 'Diff de versões',  icon: GitCompare },
+    { id: 'details',    label: 'Detalhes',         icon: Info },
   ]
   return (
     <div className="flex xl:flex-col gap-1 p-1 rounded-standard bg-surface border border-border h-fit sticky top-4">
