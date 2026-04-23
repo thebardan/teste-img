@@ -6,9 +6,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:migrate": "pnpm --filter api prisma migrate dev",
-    "db:seed": "pnpm --filter api prisma db seed",
-    "db:studio": "pnpm --filter api prisma studio"
+    "db:migrate": "pnpm --filter api exec prisma migrate dev",
+    "db:seed": "pnpm --filter api exec prisma db seed",
+    "db:studio": "pnpm --filter api exec prisma studio"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
@@ -25,7 +25,8 @@
       "@prisma/client",
       "@prisma/engines",
       "esbuild",
-      "prisma"
+      "prisma",
+      "sharp"
     ]
   }
 }

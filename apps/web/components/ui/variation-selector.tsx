@@ -16,6 +16,15 @@ export interface Variation {
   copy: CopyVariation
   qaScore?: number
   layout?: { composition: string }
+  visualSystem?: {
+    palette?: { background?: string; backgroundSecondary?: string; dominant?: string; accent?: string }
+    background?: { type?: string; colors?: string[]; angle?: number }
+    mood?: { style?: string }
+  }
+  visualDirection?: {
+    colors?: string[]
+    style?: string
+  }
 }
 
 interface VariationSelectorProps {
@@ -31,6 +40,24 @@ const APPROACH_CONFIG: Record<string, { label: string; icon: React.ElementType; 
   aspirational: { label: 'Aspiracional', icon: Star,     variant: 'success' },
 }
 
+function paletteColors(v: Variation): string[] {
+  const vs = v.visualSystem
+  if (vs?.palette) {
+    return [vs.palette.background, vs.palette.backgroundSecondary, vs.palette.dominant, vs.palette.accent].filter(Boolean) as string[]
+  }
+  if (v.visualDirection?.colors?.length) return v.visualDirection.colors
+  return ['#1a1a2e', '#16213e', '#0f3460']
+}
+
+function gradientFor(v: Variation): string {
+  const colors = paletteColors(v)
+  const angle = v.visualSystem?.background?.angle ?? 135
+  const type = v.visualSystem?.background?.type
+  if (type === 'gradient-radial') return `radial-gradient(circle at 30% 30%, ${colors.join(', ')})`
+  if (type === 'solid') return colors[0]
+  return `linear-gradient(${angle}deg, ${colors.join(', ')})`
+}
+
 export function VariationSelector({ variations, selectedIndex, onSelect, className }: VariationSelectorProps) {
   if (!variations?.length) return null
 
@@ -40,6 +67,8 @@ export function VariationSelector({ variations, selectedIndex, onSelect, classNa
         const config = APPROACH_CONFIG[v.copy.approach] ?? APPROACH_CONFIG.emotional
         const Icon = config.icon
         const isSelected = i === selectedIndex
+        const palette = paletteColors(v)
+        const styleName = v.visualSystem?.mood?.style ?? v.visualDirection?.style
 
         return (
           <button
@@ -52,6 +81,12 @@ export function VariationSelector({ variations, selectedIndex, onSelect, classNa
                 : 'bg-surface hover:shadow-card hover:bg-black/[0.02] dark:hover:bg-white/[0.04]',
             )}
           >
+            {/* Visual swatch */}
+            <div
+              className="h-10 w-full rounded-micro mb-2 border border-border"
+              style={{ background: gradientFor(v) }}
+            />
+
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
               <Badge variant={config.variant}>
@@ -64,6 +99,23 @@ export function VariationSelector({ variations, selectedIndex, onSelect, classNa
                   v.qaScore >= 80 ? 'text-success' : v.qaScore >= 60 ? 'text-warning' : 'text-danger',
                 )}>
                   QA {v.qaScore}
+                </span>
+              )}
+            </div>
+
+            {/* Color chips */}
+            <div className="flex gap-1 mb-2">
+              {palette.slice(0, 4).map((c, idx) => (
+                <div
+                  key={idx}
+                  className="h-3 w-3 rounded-full border border-border/50"
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+              {styleName && (
+                <span className="ml-auto text-nano text-fg-tertiary uppercase tracking-wider">
+                  {styleName}
                 </span>
               )}
             </div>

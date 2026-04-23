@@ -4,6 +4,10 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 const API_SECRET = process.env.API_SECRET ?? ''
+const PASSWORD_LOGIN_EMAIL = process.env.PASSWORD_LOGIN_EMAIL?.trim().toLowerCase()
+const PASSWORD_LOGIN_PASSWORD = process.env.PASSWORD_LOGIN_PASSWORD ?? ''
+const PASSWORD_LOGIN_NAME = process.env.PASSWORD_LOGIN_NAME ?? 'Admin Multi'
+const PASSWORD_LOGIN_ENABLED = Boolean(PASSWORD_LOGIN_EMAIL && PASSWORD_LOGIN_PASSWORD)
 
 /**
  * Fetch the user's role from the internal API.
@@ -33,6 +37,30 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID ?? 'dev',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'dev',
     }),
+    ...(PASSWORD_LOGIN_ENABLED
+      ? [
+          CredentialsProvider({
+            id: 'password-login',
+            name: 'Acesso por senha',
+            credentials: {
+              email: { label: 'E-mail', type: 'email' },
+              password: { label: 'Senha', type: 'password' },
+            },
+            async authorize(credentials) {
+              const email = credentials?.email?.trim().toLowerCase()
+              const password = credentials?.password ?? ''
+              if (!email || !password) return null
+              if (email !== PASSWORD_LOGIN_EMAIL || password !== PASSWORD_LOGIN_PASSWORD) return null
+              return {
+                id: `password-login:${PASSWORD_LOGIN_EMAIL}`,
+                name: PASSWORD_LOGIN_NAME,
+                email: PASSWORD_LOGIN_EMAIL,
+                image: null,
+              }
+            },
+          }),
+        ]
+      : []),
     ...(process.env.NODE_ENV === 'development'
       ? [
           CredentialsProvider({

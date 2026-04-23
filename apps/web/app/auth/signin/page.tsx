@@ -2,12 +2,43 @@
 
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
+import type { CSSProperties, FormEvent } from 'react'
+import { useState } from 'react'
 
 const isDev = process.env.NODE_ENV === 'development'
+const passwordLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_PASSWORD_LOGIN === 'true'
 
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
+  const authError = searchParams.get('error')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  async function handlePasswordLogin(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setPasswordError('')
+
+    const result = await signIn('password-login', {
+      email,
+      password,
+      callbackUrl,
+      redirect: false,
+    })
+
+    if (!result) {
+      setPasswordError('Nao foi possivel iniciar a sessao.')
+      return
+    }
+
+    if (result.error) {
+      setPasswordError('E-mail ou senha invalidos.')
+      return
+    }
+
+    window.location.href = result.url ?? callbackUrl
+  }
 
   return (
     <div
@@ -92,6 +123,99 @@ export default function SignInPage() {
           Entrar com Google
         </button>
 
+        {authError === 'google' && (
+          <p
+            style={{
+              fontFamily: '"SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+              fontSize: '12px',
+              lineHeight: 1.4,
+              color: '#ffb4a8',
+              margin: '16px auto 0',
+              maxWidth: '280px',
+            }}
+          >
+            O login Google ainda nao esta liberado para este subdominio.
+          </p>
+        )}
+
+        {passwordLoginEnabled && (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: '20px auto',
+                maxWidth: '280px',
+              }}
+            >
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+              <span
+                style={{
+                  fontFamily: '"SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.28)',
+                  letterSpacing: '-0.01em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                acesso por senha
+              </span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            </div>
+
+            <form
+              onSubmit={handlePasswordLogin}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                margin: '0 auto',
+                width: '100%',
+                maxWidth: '280px',
+              }}
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+                placeholder="E-mail"
+                autoComplete="email"
+                style={fieldStyle}
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                placeholder="Senha"
+                autoComplete="current-password"
+                style={fieldStyle}
+              />
+              <button
+                type="submit"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  fontFamily: '"SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+                  letterSpacing: '-0.022em',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s, color 0.15s',
+                }}
+              >
+                Entrar com senha
+              </button>
+            </form>
+          </>
+        )}
+
         {isDev && (
           <>
             <div
@@ -164,9 +288,35 @@ export default function SignInPage() {
         >
           Acesso restrito a colaboradores Multilaser
         </p>
+
+        {passwordError && (
+          <p
+            style={{
+              fontFamily: '"SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+              fontSize: '12px',
+              color: '#ffb4a8',
+              marginTop: '12px',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {passwordError}
+          </p>
+        )}
       </div>
     </div>
   )
+}
+
+const fieldStyle: CSSProperties = {
+  width: '100%',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#ffffff',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: '8px',
+  padding: '12px 14px',
+  fontSize: '15px',
+  fontFamily: '"SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
+  outline: 'none',
 }
 
 function GoogleIcon() {

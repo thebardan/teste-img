@@ -32,7 +32,7 @@ export class GoogleDriveService {
 
     // ConfigService may deliver literal \n (two chars) — replace with real newlines
     const pemKey = key.split('\\n').join('\n')
-    this.logger.log(`Drive auth: email=${email}, key starts with ${pemKey.substring(0, 27)}`)
+    this.logger.log(`Drive auth configured for ${email}`)
 
     const auth = new google.auth.JWT({
       email,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -39,7 +39,17 @@ import { VariationSelector } from '@/components/ui/variation-selector'
 import {
   ArrowLeft, Sparkles, Palette, Download, FileText, Wand2,
   ImageIcon, Trash2, Eye, ChevronDown, ChevronUp, Image, RefreshCw,
+  ShieldCheck, CheckSquare, Layers, GitCompare, Info,
 } from 'lucide-react'
+
+type ToolId = 'ai' | 'photos' | 'visual' | 'layout' | 'logo' | 'art' | 'qa' | 'status' | 'export' | 'diff' | 'details'
+
+interface ToolDef {
+  id: ToolId
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: number
+}
 
 const statusVariantMap: Record<string, 'default' | 'accent' | 'success' | 'danger' | 'warning'> = {
   DRAFT: 'default',
@@ -70,6 +80,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const router = useRouter()
   const [artPrompt, setArtPrompt] = useState('')
   const [showDetails, setShowDetails] = useState(false)
+  const [activeTool, setActiveTool] = useState<ToolId>('ai')
 
   async function handleDelete() {
     if (!confirm('Tem certeza que deseja excluir esta lâmina?')) return
@@ -108,12 +119,47 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const hasVariations = Array.isArray(content?.variations) && content.variations.length > 0
   const selectedIdx = content?.selectedVariation ?? 0
   const activeVariation = hasVariations ? content.variations[selectedIdx] : null
-  // If we have a selected variation, use its copy for the canvas
+  // Active canvas content: merge root + variation (variation wins for copy, visual, layout).
+  // This way Direção Visual salva em qualquer caminho (root ou variation) aparece no canvas.
   const activeContent = activeVariation
-    ? { ...content, headline: activeVariation.copy.headline, subtitle: activeVariation.copy.subtitle, benefits: activeVariation.copy.benefits, cta: activeVariation.copy.cta }
+    ? {
+        ...content,
+        headline: activeVariation.copy.headline,
+        subtitle: activeVariation.copy.subtitle,
+        benefits: activeVariation.copy.benefits,
+        cta: activeVariation.copy.cta,
+        visualSystem: activeVariation.visualSystem ?? content.visualSystem,
+        visualDirection: activeVariation.visualDirection ?? content.visualDirection,
+      }
     : content
-  // Use variation's layout zones if available, otherwise template zones
   const activeZones = activeVariation?.layout?.zones ?? zonesConfig
+
+  // Image selection: user can pick subset of product images for canvas composition.
+  const availableImages: { url: string; alt?: string; isPrimary?: boolean }[] =
+    sheet.product?.images?.map((img: any) => ({ url: img.url, alt: img.altText, isPrimary: img.isPrimary })) ?? []
+  const selectedImageUrls: string[] = Array.isArray(content?.selectedImageUrls) && content.selectedImageUrls.length > 0
+    ? content.selectedImageUrls
+    : allProductImages
+  const canvasImageUrls = selectedImageUrls
+
+  /** Save visual-direction edits to both root content and active variation so the
+   *  canvas + variation selector re-render immediately. */
+  function persistVisualChanges(patch: { visualDirection?: any; visualSystem?: any }) {
+    const update: Record<string, any> = { ...patch }
+    if (hasVariations && activeVariation) {
+      const nextVariations = content.variations.map((v: any, idx: number) =>
+        idx === selectedIdx
+          ? {
+              ...v,
+              ...(patch.visualDirection ? { visualDirection: patch.visualDirection } : {}),
+              ...(patch.visualSystem ? { visualSystem: patch.visualSystem } : {}),
+            }
+          : v,
+      )
+      update.variations = nextVariations
+    }
+    updateContent({ id, content: update })
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl animate-slide-up">
@@ -153,33 +199,30 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
-        {/* Left: Canvas Preview */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[48px_1fr_340px]">
+        {/* Left: Tool Rail — Photoshop-style */}
+        <ToolRail activeTool={activeTool} onSelect={setActiveTool} />
+
+        {/* Center: Canvas Preview — maximized for breathing room */}
         <div className="space-y-6">
-          {/* Live Preview */}
+          {/* Live Preview — minimal chrome, focused on canvas */}
           {activeContent && (activeZones || zonesConfig) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-accent" />
-                    <CardTitle className="text-sm">Preview da Lâmina</CardTitle>
-                  </div>
-                  <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">{orientation === 'landscape' ? 'Paisagem' : 'Retrato'}</span>
+            <Card className="overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-3.5 w-3.5 text-accent" />
+                  <span className="text-xs font-medium">Preview</span>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <CanvasToolbar
-                  onRegenerate={(field, guidance) => regenerateField({ id, field, guidance })}
-                  onGenerateMoreVariations={(guidance) => generateMore({ id, guidance })}
-                  isRegenerating={regenerating}
-                  isGeneratingMore={generatingMore}
-                />
+                <span className="text-[10px] text-fg-tertiary uppercase tracking-wider">
+                  {orientation === 'landscape' ? 'Paisagem' : 'Retrato'} · {canvasImageUrls.length}/{availableImages.length} fotos
+                </span>
+              </div>
+              <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02]">
                 <SalesSheetCanvas
                   content={activeContent}
                   zonesConfig={activeZones ?? zonesConfig}
-                  productImageUrl={productImage}
-                  productImageUrls={allProductImages}
+                  productImageUrl={canvasImageUrls[0] ?? productImage}
+                  productImageUrls={canvasImageUrls}
                   productSpecs={productSpecs}
                   orientation={orientation as 'landscape' | 'portrait'}
                   editable
@@ -191,7 +234,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                       : undefined
                   }
                 />
-              </CardContent>
+              </div>
             </Card>
           )}
 
@@ -263,13 +306,13 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   placeholder="Ajustes opcionais (ex: fundo branco, produto centralizado...)"
                   className="w-full rounded-md border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
                 />
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     onClick={() => generateArt({ salesSheetId: id, prompt: artPrompt || undefined })}
                     loading={generatingArt}
                     variant="primary"
                     size="md"
-                    className="flex-1"
+                    className="w-full"
                   >
                     <ImageIcon className="h-4 w-4" />
                     Gerar 1 arte
@@ -277,8 +320,9 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
                   <Button
                     onClick={() => generateArtBatch({ salesSheetId: id, count: 3, prompt: artPrompt || undefined })}
                     loading={generatingArtBatch}
-                    variant="ghost"
+                    variant="primary"
                     size="md"
+                    className="w-full"
                   >
                     <Sparkles className="h-4 w-4" />
                     Gerar 3 variações
@@ -289,63 +333,81 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           </Card>
         </div>
 
-        {/* Right: Sidebar panels */}
-        <div className="space-y-4 stagger-children">
-          {/* QA + Status */}
-          <QAPanel onRun={() => runQA(id)} isRunning={runningQA} />
-          <StatusActionsPanel
-            currentStatus={sheet.status as any}
-            history={approvalHistory}
-            entityKind="salesSheet"
-            onSubmit={() => submitMut({ id })}
-            onApprove={() => approveMut({ id })}
-            onReject={({ comment, annotations }) => rejectMut({ id, comment, annotations })}
-            onArchive={() => archiveMut({ id })}
-            isLoading={approvalBusy}
-          />
-
-          {/* Export */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Download className="h-4 w-4 text-fg-secondary" />
-                <CardTitle className="text-sm">Exportar</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleExportPdf} loading={exportingPdf} variant="ghost" className="w-full justify-start">
-                <FileText className="h-4 w-4 text-danger" />
-                Gerar PDF
-              </Button>
-              {artifacts && artifacts.length > 0 && (
-                <div className="mt-3 border-t border-border pt-3 space-y-1.5">
-                  <p className="text-xs text-fg-secondary mb-2">Anteriores</p>
-                  {artifacts.map((a) => (
-                    <SalesSheetArtifactRow key={a.id} artifact={a} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Logo Selector */}
-          <LogoSelectorPanel
-            currentLogoUrl={content?.logoUrl}
-            onSelect={(logoUrl, logoAssetId) => updateContent({ id, content: { logoUrl, logoAssetId } })}
-          />
-
-          {/* Visual Direction Editor */}
-          {content?.visualDirection && (
-            <VisualDirectionPanel
-              visualDirection={content.visualDirection}
-              visualSystem={content.visualSystem}
-              onUpdate={(vd) => updateContent({ id, content: { visualDirection: vd } })}
-              onUpdateSystem={(vs) => updateContent({ id, content: { visualSystem: vs } })}
+        {/* Right: Context panel — shows content for active tool */}
+        <div className="space-y-3">
+          {activeTool === 'ai' && (
+            <AIToolsPanel
+              onRegenerate={(field, guidance) => regenerateField({ id, field, guidance })}
+              onGenerateMoreVariations={(guidance) => generateMore({ id, guidance })}
+              isRegenerating={regenerating}
+              isGeneratingMore={generatingMore}
             />
           )}
 
-          {/* Layout Alternatives */}
-          {Array.isArray(content?.layoutAlternatives) && content.layoutAlternatives.length > 1 && (
+          {activeTool === 'photos' && availableImages.length > 0 && (
+            <ImagePickerPanel
+              images={availableImages}
+              selectedUrls={selectedImageUrls}
+              onChange={(urls) => updateContent({ id, content: { selectedImageUrls: urls } })}
+            />
+          )}
+
+          {activeTool === 'qa' && <QAPanel onRun={() => runQA(id)} isRunning={runningQA} />}
+
+          {activeTool === 'status' && (
+            <StatusActionsPanel
+              currentStatus={sheet.status as any}
+              history={approvalHistory}
+              entityKind="salesSheet"
+              onSubmit={() => submitMut({ id })}
+              onApprove={() => approveMut({ id })}
+              onReject={({ comment, annotations }) => rejectMut({ id, comment, annotations })}
+              onArchive={() => archiveMut({ id })}
+              isLoading={approvalBusy}
+            />
+          )}
+
+          {activeTool === 'export' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-fg-secondary" />
+                  <CardTitle className="text-sm">Exportar</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleExportPdf} loading={exportingPdf} variant="ghost" className="w-full justify-start">
+                  <FileText className="h-4 w-4 text-danger" />
+                  Gerar PDF
+                </Button>
+                {artifacts && artifacts.length > 0 && (
+                  <div className="mt-3 border-t border-border pt-3 space-y-1.5">
+                    <p className="text-xs text-fg-secondary mb-2">Anteriores</p>
+                    {artifacts.map((a) => (
+                      <SalesSheetArtifactRow key={a.id} artifact={a} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTool === 'logo' && (
+            <LogoSelectorPanel
+              currentLogoUrl={content?.logoUrl}
+              onSelect={(logoUrl, logoAssetId) => updateContent({ id, content: { logoUrl, logoAssetId } })}
+            />
+          )}
+
+          {activeTool === 'visual' && (activeContent?.visualDirection || content?.visualDirection) && (
+            <VisualDirectionPanel
+              visualDirection={activeContent?.visualDirection ?? content.visualDirection}
+              visualSystem={activeContent?.visualSystem ?? content.visualSystem}
+              onSave={(patch) => persistVisualChanges(patch)}
+            />
+          )}
+
+          {activeTool === 'layout' && Array.isArray(content?.layoutAlternatives) && content.layoutAlternatives.length > 1 && (
             <LayoutSwapPanel
               layouts={content.layoutAlternatives}
               selectedIndex={content.selectedLayoutIndex ?? 0}
@@ -362,12 +424,11 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
             />
           )}
 
-          {/* Version Diff */}
-          {sheet.versions && sheet.versions.length > 1 && (
+          {activeTool === 'diff' && sheet.versions && sheet.versions.length > 1 && (
             <VersionDiff versions={sheet.versions as any} kind="salesSheet" />
           )}
 
-          {/* Collapsible Details */}
+          {activeTool === 'details' && (
           <Card>
             <button
               className="flex w-full items-center justify-between p-4 text-left"
@@ -427,8 +488,48 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               </CardContent>
             )}
           </Card>
+          )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Tool Rail (Photoshop-style icon sidebar) ─────────────────────────────────
+
+function ToolRail({ activeTool, onSelect }: { activeTool: ToolId; onSelect: (id: ToolId) => void }) {
+  const tools: ToolDef[] = [
+    { id: 'ai',      label: 'Ferramentas IA',      icon: Wand2 },
+    { id: 'photos',  label: 'Fotos do produto',    icon: Image },
+    { id: 'visual',  label: 'Direção Visual',      icon: Palette },
+    { id: 'layout',  label: 'Layout',              icon: Layers },
+    { id: 'logo',    label: 'Logo',                icon: ImageIcon },
+    { id: 'qa',      label: 'QA / Validação',      icon: ShieldCheck },
+    { id: 'status',  label: 'Aprovação',           icon: CheckSquare },
+    { id: 'export',  label: 'Exportar',            icon: Download },
+    { id: 'diff',    label: 'Diff de versões',     icon: GitCompare },
+    { id: 'details', label: 'Detalhes',            icon: Info },
+  ]
+  return (
+    <div className="flex xl:flex-col gap-1 p-1 rounded-standard bg-surface border border-border h-fit sticky top-4">
+      {tools.map((t) => {
+        const Icon = t.icon
+        const active = activeTool === t.id
+        return (
+          <button
+            key={t.id}
+            onClick={() => onSelect(t.id)}
+            title={t.label}
+            className={`flex h-10 w-10 items-center justify-center rounded-micro transition-all ${
+              active
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-fg-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-fg'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -522,21 +623,123 @@ function LogoSelectorPanel({
 
 // ─── Visual Direction Panel ───────────────────────────────────────────────────
 
-const STYLE_OPTIONS = [
-  'NEON TECH', 'CYBERPUNK', 'MINIMAL PREMIUM', 'GRADIENTE AURORA',
-  'BOLD INDUSTRIAL', 'WARM LIFESTYLE', 'ELECTRIC SPORT',
+interface StylePreset {
+  id: string
+  label: string
+  colors: string[]        // [dominant, accent, background]
+  darkMode: boolean
+  suggestedTones: string[]
+  defaultBgType: 'solid' | 'gradient-linear' | 'gradient-radial' | 'mesh'
+  defaultTexture: 'none' | 'noise' | 'grid' | 'dots'
+}
+
+const STYLE_PRESETS: StylePreset[] = [
+  {
+    id: 'NEON TECH',
+    label: 'NEON TECH',
+    colors: ['#00f5ff', '#ff00c8', '#0a0a0f'],
+    darkMode: true,
+    suggestedTones: ['futuro acessível', 'poder silencioso', 'tecnologia pura'],
+    defaultBgType: 'gradient-linear',
+    defaultTexture: 'grid',
+  },
+  {
+    id: 'CYBERPUNK',
+    label: 'CYBERPUNK',
+    colors: ['#c850ff', '#0091ff', '#0a0a14'],
+    darkMode: true,
+    suggestedTones: ['adrenalina controlada', 'urbano noturno', 'rebeldia digital'],
+    defaultBgType: 'mesh',
+    defaultTexture: 'noise',
+  },
+  {
+    id: 'MINIMAL PREMIUM',
+    label: 'MINIMAL PREMIUM',
+    colors: ['#0066ff', '#e8e8ec', '#f8f8fa'],
+    darkMode: false,
+    suggestedTones: ['elegância discreta', 'design essencial', 'sofisticação silenciosa'],
+    defaultBgType: 'solid',
+    defaultTexture: 'none',
+  },
+  {
+    id: 'GRADIENTE AURORA',
+    label: 'GRADIENTE AURORA',
+    colors: ['#667eea', '#764ba2', '#0f0f1a'],
+    darkMode: true,
+    suggestedTones: ['tecnologia humanizada', 'sonho consciente', 'fluidez criativa'],
+    defaultBgType: 'gradient-radial',
+    defaultTexture: 'none',
+  },
+  {
+    id: 'BOLD INDUSTRIAL',
+    label: 'BOLD INDUSTRIAL',
+    colors: ['#ffbe0b', '#ff6b00', '#111111'],
+    darkMode: true,
+    suggestedTones: ['força bruta', 'confiança robusta', 'trabalho sério'],
+    defaultBgType: 'solid',
+    defaultTexture: 'grid',
+  },
+  {
+    id: 'WARM LIFESTYLE',
+    label: 'WARM LIFESTYLE',
+    colors: ['#d4a574', '#4a7c59', '#faf5f0'],
+    darkMode: false,
+    suggestedTones: ['aconchego dourado', 'vida bem vivida', 'simplicidade acolhedora'],
+    defaultBgType: 'gradient-linear',
+    defaultTexture: 'none',
+  },
+  {
+    id: 'ELECTRIC SPORT',
+    label: 'ELECTRIC SPORT',
+    colors: ['#c5f82a', '#0055ff', '#0a0a0f'],
+    darkMode: true,
+    suggestedTones: ['energia explosiva', 'movimento sem pausa', 'performance viva'],
+    defaultBgType: 'gradient-linear',
+    defaultTexture: 'dots',
+  },
 ]
+
+function stylePresetById(id?: string): StylePreset | null {
+  if (!id) return null
+  return STYLE_PRESETS.find((s) => s.id === id) ?? null
+}
+
+/** CSS background for a mini preview swatch */
+function previewBackground(type: string, colors: string[], angle = 135): string {
+  const [c0 = '#333', c1 = '#555', c2 = '#222'] = colors
+  if (type === 'solid') return c0
+  if (type === 'gradient-radial') return `radial-gradient(circle at 30% 30%, ${c0}, ${c1}, ${c2})`
+  if (type === 'mesh') {
+    return `radial-gradient(at 20% 20%, ${c0} 0%, transparent 50%), radial-gradient(at 80% 30%, ${c1} 0%, transparent 50%), radial-gradient(at 50% 80%, ${c2} 0%, transparent 50%), ${c2}`
+  }
+  return `linear-gradient(${angle}deg, ${c0}, ${c1}, ${c2})`
+}
+
+const TEXTURE_PREVIEW: Record<string, { image: string; size?: string }> = {
+  none: { image: '' },
+  noise: {
+    image:
+      'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'80\'><filter id=\'n\'><feTurbulence baseFrequency=\'0.9\'/></filter><rect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.35\'/></svg>")',
+  },
+  grid: {
+    image:
+      'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
+    size: '10px 10px',
+  },
+  dots: {
+    image: 'radial-gradient(rgba(255,255,255,0.3) 1px, transparent 1px)',
+    size: '8px 8px',
+  },
+}
 
 function VisualDirectionPanel({
   visualDirection,
   visualSystem,
-  onUpdate,
-  onUpdateSystem,
+  onSave,
 }: {
   visualDirection: { style?: string; colors?: string[]; emotionalTone?: string; imageAmbiance?: string; background?: string }
   visualSystem?: any
-  onUpdate: (vd: typeof visualDirection) => void
-  onUpdateSystem?: (vs: any) => void
+  onSave: (patch: { visualDirection: any; visualSystem?: any }) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [style, setStyle] = useState(visualDirection.style ?? '')
@@ -548,29 +751,54 @@ function VisualDirectionPanel({
   const [bgTexture, setBgTexture] = useState<string>(visualSystem?.background?.texture ?? 'none')
   const [bgAngle, setBgAngle] = useState<number>(visualSystem?.background?.angle ?? 135)
 
+  // Re-sync local state when the upstream selection changes (e.g. user switches variation).
+  useEffect(() => {
+    setStyle(visualDirection.style ?? '')
+    setColors(visualDirection.colors ?? [])
+    setTone(visualDirection.emotionalTone ?? '')
+    setDisplayFont(visualSystem?.typography?.displayFont ?? '')
+    setBodyFont(visualSystem?.typography?.bodyFont ?? '')
+    setBgType(visualSystem?.background?.type ?? 'gradient-linear')
+    setBgTexture(visualSystem?.background?.texture ?? 'none')
+    setBgAngle(visualSystem?.background?.angle ?? 135)
+  }, [visualDirection, visualSystem])
+
   function handleSave() {
-    onUpdate({
+    const nextVd = {
       ...visualDirection,
       style,
       colors,
       emotionalTone: tone,
-    })
-    if (onUpdateSystem && visualSystem) {
-      onUpdateSystem({
-        ...visualSystem,
-        typography: {
-          ...visualSystem.typography,
-          displayFont: displayFont || visualSystem.typography?.displayFont,
-          bodyFont: bodyFont || visualSystem.typography?.bodyFont,
-        },
-        background: {
-          ...visualSystem.background,
-          type: bgType,
-          texture: bgTexture,
-          angle: bgAngle,
-        },
-      })
     }
+    const nextVs = visualSystem
+      ? {
+          ...visualSystem,
+          palette: {
+            ...(visualSystem.palette ?? {}),
+            background: colors[0] ?? visualSystem.palette?.background,
+            backgroundSecondary: colors[1] ?? visualSystem.palette?.backgroundSecondary,
+            dominant: colors[2] ?? visualSystem.palette?.dominant,
+          },
+          typography: {
+            ...visualSystem.typography,
+            displayFont: displayFont || visualSystem.typography?.displayFont,
+            bodyFont: bodyFont || visualSystem.typography?.bodyFont,
+          },
+          background: {
+            ...visualSystem.background,
+            type: bgType,
+            texture: bgTexture,
+            angle: bgAngle,
+            colors,
+          },
+          mood: {
+            ...(visualSystem.mood ?? {}),
+            style: style || visualSystem.mood?.style,
+            emotionalTone: tone || visualSystem.mood?.emotionalTone,
+          },
+        }
+      : undefined
+    onSave({ visualDirection: nextVd, visualSystem: nextVs })
     setEditing(false)
   }
 
@@ -596,29 +824,74 @@ function VisualDirectionPanel({
       <CardContent>
         {editing ? (
           <div className="space-y-4 animate-fade-in">
-            {/* Style */}
-            <div>
-              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Estética</label>
-              <div className="flex flex-wrap gap-1.5">
-                {STYLE_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStyle(s)}
-                    className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
-                      style === s
-                        ? 'bg-accent text-white'
-                        : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+            {/* Live preview */}
+            <div
+              className="rounded-standard overflow-hidden border border-border relative"
+              style={{
+                height: 84,
+                background: previewBackground(bgType, colors, bgAngle),
+              }}
+            >
+              {bgTexture !== 'none' && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: TEXTURE_PREVIEW[bgTexture]?.image,
+                    backgroundSize: TEXTURE_PREVIEW[bgTexture]?.size,
+                    opacity: 0.6,
+                    mixBlendMode: 'overlay',
+                  }}
+                />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-white font-bold text-sm drop-shadow" style={{ letterSpacing: '0.02em' }}>
+                  {style || 'Preview'}
+                </span>
               </div>
             </div>
 
-            {/* Colors */}
+            {/* Style presets (applies colors + defaults automatically) */}
             <div>
-              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Paleta de Cores</label>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">
+                Estética
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {STYLE_PRESETS.map((preset) => {
+                  const active = style === preset.id
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => {
+                        setStyle(preset.id)
+                        setColors(preset.colors)
+                        setBgType(preset.defaultBgType)
+                        setBgTexture(preset.defaultTexture)
+                        if (!tone || !STYLE_PRESETS.some((p) => p.suggestedTones.includes(tone))) {
+                          // keep user tone if custom; otherwise set first suggestion
+                        }
+                      }}
+                      className={`rounded-standard border-2 p-1.5 text-left transition-all ${
+                        active ? 'border-accent' : 'border-border hover:border-fg-tertiary'
+                      }`}
+                    >
+                      <div
+                        className="h-6 rounded-micro mb-1"
+                        style={{
+                          background: `linear-gradient(90deg, ${preset.colors.join(', ')})`,
+                        }}
+                      />
+                      <p className="text-[10px] font-semibold truncate">{preset.label}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Colors (manual tune) */}
+            <div>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">
+                Paleta (ajustar)
+              </label>
               <div className="flex items-center gap-2">
                 {colors.map((c, i) => (
                   <div key={i} className="relative">
@@ -643,17 +916,43 @@ function VisualDirectionPanel({
                     +
                   </button>
                 )}
+                {colors.length > 2 && (
+                  <button
+                    onClick={() => setColors(colors.slice(0, -1))}
+                    className="h-8 w-8 rounded-standard border-2 border-dashed border-border flex items-center justify-center text-fg-tertiary hover:text-danger transition-colors"
+                    title="Remover última cor"
+                  >
+                    −
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Tone */}
+            {/* Tone — chips from selected preset + custom */}
             <div>
-              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Tom Emocional</label>
+              <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">
+                Tom Emocional
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
+                {(stylePresetById(style)?.suggestedTones ?? STYLE_PRESETS[0].suggestedTones).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTone(t)}
+                    className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
+                      tone === t
+                        ? 'bg-accent text-white'
+                        : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
               <input
                 type="text"
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
-                placeholder="ex: poder silencioso, futuro acessível..."
+                placeholder="Ou digite um tom customizado..."
                 className="w-full rounded-comfortable border border-border bg-btn-default px-3 py-1.5 text-caption outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
@@ -684,46 +983,85 @@ function VisualDirectionPanel({
                   </div>
                 </div>
 
-                {/* Background */}
+                {/* Background type — visual swatches */}
                 <div>
                   <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Fundo</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {['solid', 'gradient-linear', 'gradient-radial', 'mesh'].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setBgType(t)}
-                        className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
-                          bgType === t
-                            ? 'bg-accent text-white'
-                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(['solid', 'gradient-linear', 'gradient-radial', 'mesh'] as const).map((t) => {
+                      const active = bgType === t
+                      const labels: Record<string, string> = {
+                        solid: 'Sólido',
+                        'gradient-linear': 'Linear',
+                        'gradient-radial': 'Radial',
+                        mesh: 'Mesh',
+                      }
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setBgType(t)}
+                          className={`rounded-standard border-2 overflow-hidden transition-all ${
+                            active ? 'border-accent' : 'border-border hover:border-fg-tertiary'
+                          }`}
+                        >
+                          <div
+                            className="h-10 w-full"
+                            style={{ background: previewBackground(t, colors, bgAngle) }}
+                          />
+                          <div className="px-1 py-0.5 text-[9px] font-semibold text-center">
+                            {labels[t]}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
+                {/* Texture — visual swatches */}
                 <div>
                   <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">Textura</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {['none', 'noise', 'grid', 'dots'].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setBgTexture(t)}
-                        className={`rounded-pill px-2.5 py-1 text-micro transition-all ${
-                          bgTexture === t
-                            ? 'bg-accent text-white'
-                            : 'bg-black/[0.04] dark:bg-white/[0.06] text-fg-secondary hover:text-fg'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(['none', 'noise', 'grid', 'dots'] as const).map((t) => {
+                      const active = bgTexture === t
+                      const labels: Record<string, string> = {
+                        none: 'Limpa',
+                        noise: 'Grão',
+                        grid: 'Grid',
+                        dots: 'Pontos',
+                      }
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => setBgTexture(t)}
+                          className={`rounded-standard border-2 overflow-hidden transition-all ${
+                            active ? 'border-accent' : 'border-border hover:border-fg-tertiary'
+                          }`}
+                        >
+                          <div
+                            className="h-10 w-full relative"
+                            style={{ background: `linear-gradient(135deg, ${colors[0] ?? '#222'}, ${colors[2] ?? '#111'})` }}
+                          >
+                            {t !== 'none' && (
+                              <div
+                                className="absolute inset-0"
+                                style={{
+                                  backgroundImage: TEXTURE_PREVIEW[t].image,
+                                  backgroundSize: TEXTURE_PREVIEW[t].size,
+                                  opacity: 0.7,
+                                  mixBlendMode: 'overlay',
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div className="px-1 py-0.5 text-[9px] font-semibold text-center">
+                            {labels[t]}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {bgType !== 'solid' && (
+                {bgType !== 'solid' && bgType !== 'gradient-radial' && bgType !== 'mesh' && (
                   <div>
                     <label className="text-micro font-semibold uppercase tracking-wide text-fg-tertiary mb-1.5 block">
                       Ângulo gradiente: {bgAngle}°
@@ -760,6 +1098,212 @@ function VisualDirectionPanel({
           </div>
         )}
       </CardContent>
+    </Card>
+  )
+}
+
+// ─── AI Tools Panel ───────────────────────────────────────────────────────────
+
+function AIToolsPanel({
+  onRegenerate,
+  onGenerateMoreVariations,
+  isRegenerating,
+  isGeneratingMore,
+}: {
+  onRegenerate: (field: 'headline' | 'subtitle' | 'benefits' | 'cta', guidance?: string) => void
+  onGenerateMoreVariations: (guidance?: string) => void
+  isRegenerating?: boolean
+  isGeneratingMore?: boolean
+}) {
+  const [open, setOpen] = useState(true)
+  const [guidance, setGuidance] = useState('')
+  const [busyField, setBusyField] = useState<string | null>(null)
+
+  async function runRegenerate(field: 'headline' | 'subtitle' | 'benefits' | 'cta') {
+    setBusyField(field)
+    try {
+      await onRegenerate(field, guidance.trim() || undefined)
+    } finally {
+      setBusyField(null)
+    }
+  }
+
+  async function runMore() {
+    setBusyField('more')
+    try {
+      await onGenerateMoreVariations(guidance.trim() || undefined)
+    } finally {
+      setBusyField(null)
+    }
+  }
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Wand2 className="h-4 w-4 text-accent" />
+          <span className="text-sm font-medium">Ferramentas IA</span>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 text-fg-tertiary" />}
+      </button>
+
+      {open && (
+        <CardContent className="pt-0 space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-fg-tertiary mb-1 block">
+              Orientação (opcional)
+            </label>
+            <textarea
+              value={guidance}
+              onChange={(e) => setGuidance(e.target.value)}
+              rows={2}
+              placeholder="ex: mais agressivo, tom premium, foco em economia..."
+              className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-accent resize-none"
+            />
+            <p className="mt-1 text-[10px] text-fg-tertiary">
+              Aplicada a qualquer regeneração abaixo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['headline', 'subtitle', 'benefits', 'cta'] as const).map((field) => (
+              <Button
+                key={field}
+                variant="ghost"
+                size="sm"
+                onClick={() => runRegenerate(field)}
+                loading={isRegenerating && busyField === field}
+                className="text-[11px] justify-start"
+              >
+                <RefreshCw className="h-3 w-3" />
+                {field}
+              </Button>
+            ))}
+          </div>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={runMore}
+            loading={isGeneratingMore && busyField === 'more'}
+            className="w-full"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            +3 variações com essa orientação
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+// ─── Image Picker Panel ───────────────────────────────────────────────────────
+
+function ImagePickerPanel({
+  images,
+  selectedUrls,
+  onChange,
+}: {
+  images: { url: string; alt?: string; isPrimary?: boolean }[]
+  selectedUrls: string[]
+  onChange: (urls: string[]) => void
+}) {
+  const [open, setOpen] = useState(true)
+  const selectedSet = new Set(selectedUrls)
+
+  function toggle(url: string) {
+    const next = new Set(selectedSet)
+    if (next.has(url)) next.delete(url)
+    else next.add(url)
+    // Preserve original order from images prop
+    const ordered = images.map((img) => img.url).filter((u) => next.has(u))
+    onChange(ordered.length > 0 ? ordered : [images[0]?.url].filter(Boolean) as string[])
+  }
+
+  function selectAll() {
+    onChange(images.map((img) => img.url))
+  }
+
+  function selectOnlyPrimary() {
+    const primary = images.find((img) => img.isPrimary) ?? images[0]
+    if (primary) onChange([primary.url])
+  }
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Image className="h-4 w-4 text-fg-secondary" />
+          <span className="text-sm font-medium">Fotos do produto</span>
+          <span className="text-[10px] rounded-full bg-accent/10 px-1.5 py-0.5 text-accent font-semibold">
+            {selectedSet.size}/{images.length}
+          </span>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 text-fg-tertiary" />}
+      </button>
+
+      {open && (
+        <CardContent className="pt-0 space-y-2">
+          <div className="flex gap-1.5">
+            <Button variant="ghost" size="sm" onClick={selectAll} className="text-[10px] flex-1">
+              Todas
+            </Button>
+            <Button variant="ghost" size="sm" onClick={selectOnlyPrimary} className="text-[10px] flex-1">
+              Só principal
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 max-h-80 overflow-y-auto">
+            {images.map((img, i) => {
+              const selected = selectedSet.has(img.url)
+              const order = selected ? selectedUrls.indexOf(img.url) + 1 : null
+              return (
+                <button
+                  key={img.url}
+                  onClick={() => toggle(img.url)}
+                  className={`relative rounded-micro overflow-hidden border-2 transition-all aspect-square ${
+                    selected ? 'border-accent' : 'border-border hover:border-fg-tertiary opacity-60 hover:opacity-100'
+                  }`}
+                  title={img.alt ?? `Foto ${i + 1}`}
+                >
+                  <img
+                    src={img.url}
+                    alt={img.alt ?? `Foto ${i + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                  {selected && (
+                    <div className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-white text-[9px] font-bold">
+                      {order}
+                    </div>
+                  )}
+                  {img.isPrimary && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-accent/80 text-white text-[8px] text-center font-semibold py-0.5">
+                      PRINCIPAL
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedSet.size === 0 && (
+            <p className="text-[10px] text-danger text-center py-1">
+              Selecione ao menos uma foto
+            </p>
+          )}
+          {selectedSet.size > 0 && (
+            <p className="text-[10px] text-fg-tertiary text-center">
+              Ordem: números indicam ordem no canvas. Primeira = imagem principal.
+            </p>
+          )}
+        </CardContent>
+      )}
     </Card>
   )
 }
