@@ -82,6 +82,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const [artPrompt, setArtPrompt] = useState('')
   const [showDetails, setShowDetails] = useState(false)
   const [activeTool, setActiveTool] = useState<ToolId | null>(null)
+  const [artModalUrl, setArtModalUrl] = useState<string | null>(null)
 
   async function handleDelete() {
     if (!confirm('Tem certeza que deseja excluir esta lâmina?')) return
@@ -263,18 +264,26 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-accent" />
-                  <CardTitle className="text-sm">Arte (Gemini)</CardTitle>
+                  <CardTitle className="text-sm">Gerar Lâmina</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {(artResult?.artImageUrl || latestVersion?.artImageKey) && (
-                  <div className="rounded-lg overflow-hidden bg-black/[0.03]">
+                  <button
+                    onClick={() =>
+                      setArtModalUrl(
+                        artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`,
+                      )
+                    }
+                    className="block w-full rounded-lg overflow-hidden bg-black/[0.03] hover:ring-2 hover:ring-accent transition-all"
+                    title="Clique para ampliar"
+                  >
                     <img
                       src={artResult?.artImageUrl ?? `/api/storage/${latestVersion?.artImageKey}`}
                       alt="Arte gerada"
                       className="max-h-48 w-full object-contain"
                     />
-                  </div>
+                  </button>
                 )}
                 <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
                   <input
@@ -476,6 +485,28 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
         </div>
         )}
       </div>
+
+      {/* Art fullscreen modal */}
+      {artModalUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6 animate-fade-in"
+          onClick={() => setArtModalUrl(null)}
+        >
+          <button
+            onClick={() => setArtModalUrl(null)}
+            className="absolute top-4 right-4 rounded-full bg-white/10 hover:bg-white/20 p-2 text-white transition-colors"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+          <img
+            src={artModalUrl}
+            alt="Arte em tela cheia"
+            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -484,10 +515,10 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
 function ToolRail({ activeTool, onSelect }: { activeTool: ToolId | null; onSelect: (id: ToolId) => void }) {
   const tools: ToolDef[] = [
-    { id: 'ai',         label: 'Gerar lâmina',     icon: Wand2, highlight: true },
+    { id: 'art',        label: 'Gerar Lâmina',     icon: Wand2, highlight: true },
     { id: 'variations', label: 'Variações',        icon: Sparkles },
+    { id: 'ai',         label: 'Regenerar copy',   icon: RefreshCw },
     { id: 'photos',     label: 'Fotos do produto', icon: Image },
-    { id: 'art',        label: 'Arte Gemini',      icon: ImageIcon },
     { id: 'visual',     label: 'Direção Visual',   icon: Palette },
     { id: 'layout',     label: 'Layout',           icon: Layers },
     { id: 'logo',       label: 'Logo',             icon: FileText },
