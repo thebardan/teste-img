@@ -2,6 +2,18 @@ import { Controller, Get, Param, Query, Res, NotFoundException } from '@nestjs/c
 import type { Response } from 'express'
 import { StorageService } from './storage.service'
 
+function mimeFor(key: string): string {
+  const ext = key.split('.').pop()?.toLowerCase()
+  return (
+    ext === 'png' ? 'image/png' :
+    ext === 'webp' ? 'image/webp' :
+    ext === 'svg' ? 'image/svg+xml' :
+    ext === 'pdf' ? 'application/pdf' :
+    ext === 'pptx' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' :
+    'image/jpeg'
+  )
+}
+
 @Controller('storage')
 export class StorageController {
   constructor(private readonly storage: StorageService) {}
@@ -17,18 +29,15 @@ export class StorageController {
   @Get('stream/*')
   async stream(@Param('0') key: string, @Res() res: Response) {
     try {
-      const buf = await this.storage.getBuffer(key)
-      const ext = key.split('.').pop()?.toLowerCase()
-      const mime =
-        ext === 'png' ? 'image/png' :
-        ext === 'webp' ? 'image/webp' :
-        ext === 'svg' ? 'image/svg+xml' :
-        ext === 'pdf' ? 'application/pdf' :
-        ext === 'pptx' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' :
-        'image/jpeg'
-      res.setHeader('Content-Type', mime)
+      const { stream, size } = await this.storage.getStream(key)
+      res.setHeader('Content-Type', mimeFor(key))
       res.setHeader('Cache-Control', 'private, max-age=600')
-      res.send(buf)
+      res.setHeader('Content-Length', String(size))
+      stream.on('error', (err) => {
+        if (!res.headersSent) res.status(500).end()
+        res.destroy(err)
+      })
+      stream.pipe(res)
     } catch {
       throw new NotFoundException(`Key ${key} not found`)
     }

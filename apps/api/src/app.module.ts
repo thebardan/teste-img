@@ -20,6 +20,7 @@ import { AuthModule } from './auth/auth.module'
 import { UsersModule } from './users/users.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { BrandGovernanceModule } from './brand-governance/brand-governance.module'
+import { CacheModule } from './cache/cache.module'
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
 
 @Module({
@@ -33,6 +34,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware'
     UsersModule,
     NotificationsModule,
     BrandGovernanceModule,
+    CacheModule,
     DatabaseModule,
     QueueModule,
     StorageModule,

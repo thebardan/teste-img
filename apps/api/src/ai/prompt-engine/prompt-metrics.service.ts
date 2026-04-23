@@ -9,9 +9,17 @@ export interface PromptVersionStats {
   rejectedCount: number
   draftCount: number
   archivedCount: number
-  approvalRate: number  // approved / (approved + rejected), null-safe
+  approvalRate: number
   avgDurationMs: number
-  successRate: number   // non-error inference rate
+  successRate: number
+}
+
+export interface PromptMetricsQuery {
+  promptId?: string
+  from?: Date
+  to?: Date
+  limit?: number
+  offset?: number
 }
 
 @Injectable()
@@ -19,76 +27,93 @@ export class PromptMetricsService {
   constructor(private prisma: PrismaClient) {}
 
   /**
-   * For each (promptId, promptVersion) pair, compute usage stats and approval rate
-   * based on the final status of the parent SalesSheet / Presentation.
+   * Aggregates InferenceLog stats by (promptId, promptVersion) using Prisma groupBy
+   * (SQL GROUP BY). Relies on composite index (promptId, promptVersion).
+   * Joins final status via a second query on the related version tables.
    */
-  async getAll(): Promise<PromptVersionStats[]> {
-    const logs = await this.prisma.inferenceLog.findMany({
-      select: {
-        promptId: true,
-        promptVersion: true,
-        durationMs: true,
-        success: true,
-        salesSheetVersion: { select: { salesSheet: { select: { status: true } } } },
-        presentationVersion: { select: { presentation: { select: { status: true } } } },
-      },
+  async getAll(query: PromptMetricsQuery = {}): Promise<{ items: PromptVersionStats[]; total: number }> {
+    const where: any = {}
+    if (query.promptId) where.promptId = query.promptId
+    if (query.from || query.to) {
+      where.createdAt = {}
+      if (query.from) where.createdAt.gte = query.from
+      if (query.to) where.createdAt.lte = query.to
+    }
+
+    const limit = Math.max(1, Math.min(100, query.limit ?? 50))
+    const offset = Math.max(0, query.offset ?? 0)
+
+    const grouped = await this.prisma.inferenceLog.groupBy({
+      by: ['promptId', 'promptVersion'],
+      where,
+      _count: { _all: true },
+      _avg: { durationMs: true },
+      _sum: { durationMs: true },
+      orderBy: { _count: { promptId: 'desc' } },
     })
 
-    const bucket = new Map<string, {
-      promptId: string
-      promptVersion: string
-      usage: number
-      successes: number
-      totalDuration: number
-      statuses: Record<string, number>
-    }>()
+    const totalCount = grouped.length
+    const pagedGroups = grouped.slice(offset, offset + limit)
 
-    for (const log of logs) {
-      const key = `${log.promptId}|${log.promptVersion}`
-      if (!bucket.has(key)) {
-        bucket.set(key, {
-          promptId: log.promptId,
-          promptVersion: log.promptVersion,
-          usage: 0,
-          successes: 0,
-          totalDuration: 0,
-          statuses: {},
-        })
-      }
-      const b = bucket.get(key)!
-      b.usage++
-      if (log.success) b.successes++
-      b.totalDuration += log.durationMs ?? 0
-      const status = log.salesSheetVersion?.salesSheet.status ?? log.presentationVersion?.presentation.status
-      if (status) b.statuses[status] = (b.statuses[status] ?? 0) + 1
-    }
+    const items = await Promise.all(
+      pagedGroups.map(async (g) => {
+        const [approvedSheet, rejectedSheet, draftSheet, archivedSheet,
+               approvedPres, rejectedPres, draftPres, archivedPres,
+               successCount] = await Promise.all([
+          this.countByStatus(g.promptId, g.promptVersion, 'APPROVED', 'salesSheet', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'REJECTED', 'salesSheet', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'DRAFT', 'salesSheet', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'ARCHIVED', 'salesSheet', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'APPROVED', 'presentation', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'REJECTED', 'presentation', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'DRAFT', 'presentation', where),
+          this.countByStatus(g.promptId, g.promptVersion, 'ARCHIVED', 'presentation', where),
+          this.prisma.inferenceLog.count({
+            where: { ...where, promptId: g.promptId, promptVersion: g.promptVersion, success: true },
+          }),
+        ])
 
-    const rows: PromptVersionStats[] = []
-    for (const b of bucket.values()) {
-      const approved = b.statuses['APPROVED'] ?? 0
-      const rejected = b.statuses['REJECTED'] ?? 0
-      const draft = b.statuses['DRAFT'] ?? 0
-      const archived = b.statuses['ARCHIVED'] ?? 0
-      const decided = approved + rejected
-      rows.push({
-        promptId: b.promptId,
-        promptVersion: b.promptVersion,
-        usage: b.usage,
-        approvedCount: approved,
-        rejectedCount: rejected,
-        draftCount: draft,
-        archivedCount: archived,
-        approvalRate: decided > 0 ? approved / decided : 0,
-        avgDurationMs: b.usage > 0 ? Math.round(b.totalDuration / b.usage) : 0,
-        successRate: b.usage > 0 ? b.successes / b.usage : 0,
-      })
-    }
+        const approved = approvedSheet + approvedPres
+        const rejected = rejectedSheet + rejectedPres
+        const draft = draftSheet + draftPres
+        const archived = archivedSheet + archivedPres
+        const decided = approved + rejected
+        const usage = g._count._all
 
-    return rows.sort((a, b) => b.usage - a.usage)
+        return {
+          promptId: g.promptId,
+          promptVersion: g.promptVersion,
+          usage,
+          approvedCount: approved,
+          rejectedCount: rejected,
+          draftCount: draft,
+          archivedCount: archived,
+          approvalRate: decided > 0 ? approved / decided : 0,
+          avgDurationMs: Math.round(g._avg.durationMs ?? 0),
+          successRate: usage > 0 ? successCount / usage : 0,
+        }
+      }),
+    )
+
+    return { items, total: totalCount }
   }
 
-  async getForPrompt(promptId: string): Promise<PromptVersionStats[]> {
-    const all = await this.getAll()
-    return all.filter((r) => r.promptId === promptId)
+  async getForPrompt(promptId: string, query: Omit<PromptMetricsQuery, 'promptId'> = {}) {
+    return this.getAll({ ...query, promptId })
+  }
+
+  private async countByStatus(
+    promptId: string,
+    promptVersion: string,
+    status: 'APPROVED' | 'REJECTED' | 'DRAFT' | 'ARCHIVED',
+    entity: 'salesSheet' | 'presentation',
+    baseWhere: any,
+  ): Promise<number> {
+    const relation = entity === 'salesSheet'
+      ? { salesSheetVersion: { salesSheet: { status } } }
+      : { presentationVersion: { presentation: { status } } }
+    return this.prisma.inferenceLog.count({
+      where: { ...baseWhere, promptId, promptVersion, ...relation },
+    })
   }
 }

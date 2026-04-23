@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common'
 import { PromptEngineService } from '../prompt-engine/prompt-engine.service'
 import { buildPalette, hexToHsl } from '../utils/color-harmony'
 import { generateTypeScale, getFontPairing, SCALE_RATIOS } from '../utils/type-scale'
+import { CacheService } from '../../cache/cache.service'
+
+const VISUAL_SYSTEM_CACHE_TTL_SECONDS = 60 * 60
+const VISUAL_SYSTEM_CACHE_PREFIX = 'ai:visual-system:'
 
 export interface VisualSystemInput {
   productName: string
@@ -43,9 +47,28 @@ export interface VisualSystem {
 
 @Injectable()
 export class VisualSystemAgent {
-  constructor(private promptEngine: PromptEngineService) {}
+  constructor(
+    private promptEngine: PromptEngineService,
+    private cache: CacheService,
+  ) {}
 
-  async generate(input: VisualSystemInput): Promise<VisualSystem> {
+  async generate(input: VisualSystemInput & { bypassCache?: boolean }): Promise<VisualSystem> {
+    const cacheable = !input.bypassCache
+    const cacheKey = cacheable
+      ? `${VISUAL_SYSTEM_CACHE_PREFIX}${CacheService.hashInput({
+          productName: input.productName,
+          category: input.category,
+          headline: input.headline ?? '',
+          emotionalTone: input.emotionalTone ?? '',
+          channel: input.channel ?? '',
+        })}`
+      : null
+
+    if (cacheKey) {
+      const cached = await this.cache.get<VisualSystem>(cacheKey)
+      if (cached) return cached
+    }
+
     // 1. Call AI for creative direction
     const result = await this.promptEngine.run('visual-system', {
       productName: input.productName,
@@ -93,7 +116,7 @@ export class VisualSystemAgent {
     const overlayColor = darkMode ? '#000000' : '#ffffff'
     const overlayOpacity = darkMode ? 0.3 : 0.15
 
-    return {
+    const out: VisualSystem = {
       palette,
       typography: {
         displayFont: pairing.display,
@@ -114,6 +137,12 @@ export class VisualSystemAgent {
         darkMode,
       },
     }
+
+    if (cacheKey) {
+      await this.cache.set(cacheKey, out, VISUAL_SYSTEM_CACHE_TTL_SECONDS)
+    }
+
+    return out
   }
 
   // ─── private helpers ───────────────────────────────────────────────────────

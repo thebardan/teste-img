@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import { PromptEngineService } from '../prompt-engine/prompt-engine.service'
 import { BrandGovernanceService, ClientBrandProfile } from '../../brand-governance/brand-governance.service'
+import { CacheService } from '../../cache/cache.service'
+
+const COPY_DIRECTOR_CACHE_TTL_SECONDS = 60 * 60 // 1h
+const COPY_DIRECTOR_CACHE_PREFIX = 'ai:copy-director:'
 
 // Fallback tone profiles per product category — used only if DB has nothing.
 // Source of truth moved to TonePreset table; edit via /brand-governance/tones.
@@ -111,6 +115,7 @@ export class CopyDirectorAgent {
     private promptEngine: PromptEngineService,
     private brandGovernance: BrandGovernanceService,
     private prisma: PrismaClient,
+    private cache: CacheService,
   ) {}
 
   /**
@@ -158,8 +163,29 @@ ${examples.join('\n\n')}
 
   async generate(
     input: CopyDirectorInput,
-    opts?: { salesSheetVersionId?: string },
+    opts?: { salesSheetVersionId?: string; guidance?: string; bypassCache?: boolean },
   ): Promise<CopyDirectorOutput> {
+    // Cache key = deterministic hash of input (excludes transient opts).
+    // Skip cache when guidance/bypassCache present — user wants a fresh generation.
+    const cacheable = !opts?.guidance && !opts?.bypassCache
+    const cacheKey = cacheable
+      ? `${COPY_DIRECTOR_CACHE_PREFIX}${CacheService.hashInput({
+          productName: input.productName,
+          sku: input.sku,
+          category: input.category,
+          description: input.description,
+          benefits: input.benefits,
+          specs: input.specs,
+          channel: input.channel,
+          clientProfile: input.clientProfile ?? null,
+        })}`
+      : null
+
+    if (cacheKey) {
+      const cached = await this.cache.get<CopyDirectorOutput>(cacheKey)
+      if (cached) return cached
+    }
+
     const categoryKey = input.category.toLowerCase()
     // DB first, fallback to inline map.
     const dbTone = await this.brandGovernance.getToneForCategory(categoryKey).catch(() => null)
@@ -265,8 +291,8 @@ Responda APENAS com JSON válido no formato:
   "selectedIndex": 0
 }`
 
-    const result = await this.promptEngine.run('copy-director', { prompt }, opts)
-    const output = result.parsedOutput as any
+    const runResult = await this.promptEngine.run('copy-director', { prompt }, opts)
+    const output = runResult.parsedOutput as any
 
     const rawVariations: any[] = Array.isArray(output?.variations) ? output.variations : []
 
@@ -296,7 +322,7 @@ Responda APENAS com JSON válido no formato:
         ? output.selectedIndex
         : 0
 
-    return {
+    const result: CopyDirectorOutput = {
       variations,
       selectedIndex,
       toneProfile: {
@@ -305,6 +331,12 @@ Responda APENAS com JSON válido no formato:
         voice: toneData.voice,
       },
     }
+
+    if (cacheKey) {
+      await this.cache.set(cacheKey, result, COPY_DIRECTOR_CACHE_TTL_SECONDS)
+    }
+
+    return result
   }
 
   private fallbackHeadline(

@@ -50,6 +50,9 @@ importers:
       googleapis:
         specifier: ^171.4.0
         version: 171.4.0
+      ioredis:
+        specifier: ^5.10.1
+        version: 5.10.1
       minio:
         specifier: ^8.0.7
         version: 8.0.7

@@ -38,10 +38,11 @@ export class StorageService implements OnModuleInit {
 
   async onModuleInit() {
     this.bucket = this.config.get('MINIO_BUCKET')!
+    const useSSL = this.config.get('MINIO_USE_SSL') === 'true'
     this.client = new Minio.Client({
       endPoint: this.config.get('MINIO_ENDPOINT')!,
       port: this.config.get<number>('MINIO_PORT'),
-      useSSL: this.config.get('MINIO_USE_SSL') === 'true',
+      useSSL,
       accessKey: this.config.get('MINIO_ACCESS_KEY')!,
       secretKey: this.config.get('MINIO_SECRET_KEY')!,
     })
@@ -134,5 +135,16 @@ export class StorageService implements OnModuleInit {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
     }
     return Buffer.concat(chunks)
+  }
+
+  /**
+   * Returns a readable stream for the given key + the object size (Content-Length).
+   * Prefer this over getBuffer for large files — avoids loading the whole object
+   * into memory.
+   */
+  async getStream(key: string): Promise<{ stream: NodeJS.ReadableStream; size: number }> {
+    const stat = await this.client.statObject(this.bucket, key)
+    const stream = await this.client.getObject(this.bucket, key)
+    return { stream, size: stat.size }
   }
 }

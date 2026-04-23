@@ -420,6 +420,8 @@ model InferenceLog {
 
   @@index([salesSheetVersionId])
   @@index([presentationVersionId])
+  @@index([promptId, promptVersion])
+  @@index([createdAt])
 }
 
 // ─── Export Artifacts ─────────────────────────────────────────────────────────

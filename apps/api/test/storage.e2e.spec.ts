@@ -1,4 +1,5 @@
 import * as request from 'supertest'
+import { Readable } from 'stream'
 import { StorageController } from '../src/storage/storage.controller'
 import { StorageService } from '../src/storage/storage.service'
 import { bootstrap, close, makePrismaMock, type E2EContext } from './e2e-setup'
@@ -7,6 +8,7 @@ describe('E2E /api/storage', () => {
   let ctx: E2EContext
   const mockStorage = {
     getBuffer: jest.fn(),
+    getStream: jest.fn(),
     getPresignedUrl: jest.fn(),
   }
 
@@ -38,16 +40,21 @@ describe('E2E /api/storage', () => {
   })
 
   it('GET /storage/stream/:key streams image bytes with correct mime', async () => {
-    mockStorage.getBuffer.mockResolvedValue(Buffer.from('PNGDATA'))
+    const data = Buffer.from('PNGDATA')
+    mockStorage.getStream.mockResolvedValue({
+      stream: Readable.from([data]),
+      size: data.length,
+    })
     const res = await request(ctx.app.getHttpServer())
       .get('/api/storage/stream/art/x.png')
       .expect(200)
     expect(res.headers['content-type']).toBe('image/png')
+    expect(res.headers['content-length']).toBe(String(data.length))
     expect(res.body.toString()).toBe('PNGDATA')
   })
 
   it('GET /storage/stream/:key 404 on failure', async () => {
-    mockStorage.getBuffer.mockRejectedValue(new Error('gone'))
+    mockStorage.getStream.mockRejectedValue(new Error('gone'))
     await request(ctx.app.getHttpServer())
       .get('/api/storage/stream/missing')
       .expect(404)

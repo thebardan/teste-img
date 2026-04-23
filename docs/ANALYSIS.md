@@ -256,10 +256,10 @@ Arquivo: `users.service.ts:resolveCaller`
 | Storage | 6.5/10 | Buffer-in-memory em vez de stream |
 | Frontend | 9.0/10 | React Query bem usado; SSE elimina polling |
 
-**Top 3 otimizações futuras:**
-1. **Cache AI responses** para `product_id+channel` combo (Redis, TTL 1h).
-2. **Stream storage** com `Readable.pipe` para arquivos grandes.
-3. **Index `InferenceLog.(promptId, promptVersion)`** + paginação no endpoint de metrics.
+**Top 3 otimizações (✓ implementadas):**
+1. ✓ **Cache AI responses** — `CacheService` com Redis + `ioredis`. Aplicado em CopyDirector e VisualSystemAgent. Hash estável do input (produto+canal+perfil+few-shot). TTL 1h. Bypass automático quando `guidance` ou `bypassCache` presente. Degrada silenciosamente se Redis cair.
+2. ✓ **Stream storage** — `StorageService.getStream()` retorna Minio stream + size; `StorageController.stream` usa `pipe(res)` com Content-Length, sem buffer-in-memory.
+3. ✓ **Index composto `InferenceLog(promptId, promptVersion)` + `createdAt`** + migration. Endpoint `/prompt-metrics` reescrito com Prisma `groupBy` (SQL GROUP BY) + paginação (`limit`/`offset`) + date-range filter (`from`/`to`).
 
 ### Aderência Summary
 
