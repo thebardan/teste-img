@@ -49,6 +49,19 @@ export class SalesSheetsController {
     return this.artComposer.generateBatch(id, body.count ?? 3, body.prompt)
   }
 
+  @Post(':id/generate-art-batch-async')
+  enqueueArtBatch(
+    @Param('id') id: string,
+    @Body() body: { count?: number; prompt?: string },
+  ) {
+    return this.artComposer.enqueueBatch(id, body.count ?? 3, body.prompt)
+  }
+
+  @Get('art-jobs/:jobId')
+  getArtJob(@Param('jobId') jobId: string) {
+    return this.artComposer.getJob(jobId)
+  }
+
   @Patch(':id/content')
   updateContent(@Param('id') id: string, @Body() body: Record<string, any>) {
     return this.service.updateContent(id, body)

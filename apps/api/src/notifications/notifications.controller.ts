@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Param, Query, NotFoundException } from '@nestjs/common'
+import { Controller, Get, Post, Param, Query, NotFoundException, Sse, MessageEvent } from '@nestjs/common'
+import { Observable } from 'rxjs'
 import { NotificationsService } from './notifications.service'
 import { UsersService } from '../users/users.service'
 import { CurrentUser, type RequestUser } from '../auth/current-user.decorator'
+import { Public } from '../auth/public.decorator'
 
 @Controller('notifications')
 export class NotificationsController {
@@ -42,5 +44,21 @@ export class NotificationsController {
     const user = await this.users.resolveCaller(caller?.email)
     const result = await this.service.markAllRead(user.id)
     return { updated: result.count }
+  }
+
+  @Public()
+  @Sse('stream')
+  async stream(@Query('email') email: string): Promise<Observable<MessageEvent>> {
+    const user = await this.users.resolveCaller(email)
+    return new Observable<MessageEvent>((subscriber) => {
+      const unsubscribe = this.service.subscribe(user.id, (notif) => {
+        subscriber.next({ data: notif })
+      })
+      const hb = setInterval(() => subscriber.next({ data: { ping: Date.now() } }), 30_000)
+      return () => {
+        clearInterval(hb)
+        unsubscribe()
+      }
+    })
   }
 }

@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { InjectQueue } from '@nestjs/bullmq'
+import type { Queue } from 'bullmq'
 import { GeminiArtProvider } from '../../ai/providers/gemini/gemini-art.provider'
 import { StorageService } from '../../storage/storage.service'
+import { QUEUE_GENERATION } from '../../queue/queue.constants'
 
 @Injectable()
 export class ArtComposerService {
@@ -11,7 +14,65 @@ export class ArtComposerService {
     private prisma: PrismaClient,
     private artProvider: GeminiArtProvider,
     private storage: StorageService,
+    @InjectQueue(QUEUE_GENERATION) private generationQueue: Queue,
   ) {}
+
+  async enqueueBatch(
+    salesSheetId: string,
+    count: number,
+    refinementPrompt?: string,
+  ): Promise<{ jobId: string }> {
+    const n = Math.max(1, Math.min(5, count))
+    const job = await this.prisma.generationJob.create({
+      data: {
+        type: 'art-batch',
+        status: 'PENDING',
+        entityType: 'SalesSheet',
+        entityId: salesSheetId,
+        payload: { count: n, refinementPrompt: refinementPrompt ?? null, results: [] } as any,
+      },
+    })
+    await this.generationQueue.add(
+      'art-batch',
+      { jobId: job.id, salesSheetId, count: n, refinementPrompt },
+      { jobId: job.id },
+    )
+    return { jobId: job.id }
+  }
+
+  async getJob(jobId: string) {
+    const job = await this.prisma.generationJob.findUnique({ where: { id: jobId } })
+    if (!job) throw new NotFoundException(`GenerationJob ${jobId} not found`)
+    return job
+  }
+
+  async processBatchJob(jobId: string, salesSheetId: string, count: number, refinementPrompt?: string) {
+    await this.prisma.generationJob.update({
+      where: { id: jobId },
+      data: { status: 'PROCESSING', startedAt: new Date() },
+    })
+    try {
+      const results = await this.generateBatch(salesSheetId, count, refinementPrompt)
+      await this.prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          payload: { count, refinementPrompt, results } as any,
+        },
+      })
+    } catch (err: any) {
+      await this.prisma.generationJob.update({
+        where: { id: jobId },
+        data: {
+          status: 'FAILED',
+          completedAt: new Date(),
+          error: err?.message ?? 'Unknown error',
+        },
+      })
+      throw err
+    }
+  }
 
   async generateBatch(
     salesSheetId: string,

@@ -34,3 +34,42 @@ export function useGenerateArtBatch() {
     },
   })
 }
+
+import { useQuery } from '@tanstack/react-query'
+
+export interface ArtJob {
+  id: string
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  entityId: string
+  payload: {
+    count: number
+    refinementPrompt: string | null
+    results: ArtResult[]
+  }
+  error: string | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+}
+
+export function useEnqueueArtBatch() {
+  return useMutation<{ jobId: string }, Error, { salesSheetId: string; count?: number; prompt?: string }>({
+    mutationFn: ({ salesSheetId, count, prompt }) =>
+      apiFetch(`/sales-sheets/${salesSheetId}/generate-art-batch-async`, {
+        method: 'POST',
+        body: JSON.stringify({ count: count ?? 3, prompt }),
+      }),
+  })
+}
+
+export function useArtJob(jobId: string | null) {
+  return useQuery<ArtJob>({
+    queryKey: ['art-job', jobId],
+    queryFn: () => apiFetch(`/sales-sheets/art-jobs/${jobId}`),
+    enabled: !!jobId,
+    refetchInterval: (q) => {
+      const s = q.state.data?.status
+      return s === 'COMPLETED' || s === 'FAILED' || s === 'CANCELLED' ? false : 2000
+    },
+  })
+}

@@ -72,6 +72,14 @@ describe('PresentationsService', () => {
       mockVisualSystem as any,
       mockUsers as any,
     )
+
+    // Extend mockPrisma for slide CRUD tests
+    ;(mockPrisma as any).presentationSlide = {
+      update: jest.fn().mockResolvedValue({}),
+      delete: jest.fn().mockResolvedValue({}),
+      create: jest.fn().mockResolvedValue({}),
+    }
+    ;(mockPrisma as any).$transaction = jest.fn((ops: Promise<any>[]) => Promise.all(ops))
   })
 
   describe('findOne', () => {
@@ -144,6 +152,80 @@ describe('PresentationsService', () => {
 
       const result = await service.generate({ ...dto, clientId: 'client-1' })
       expect(result.title).toContain('Walmart')
+    })
+  })
+
+  describe('slide CRUD', () => {
+    const latestVersion = {
+      id: 'v-1',
+      slides: [
+        { id: 's-0', order: 0, content: { type: 'cover', title: 'Cover' } },
+        { id: 's-1', order: 1, content: { type: 'context', title: 'Context' } },
+        { id: 's-2', order: 2, content: { type: 'products', title: 'Products' } },
+      ],
+    }
+
+    function mockLoadLatest() {
+      mockPrisma.presentation.findUnique.mockResolvedValue({
+        id: 'p-1',
+        clientId: null,
+        versions: [latestVersion],
+      })
+    }
+
+    it('updateSlideContent merges partial content into correct slide', async () => {
+      mockLoadLatest()
+      const result = await service.updateSlideContent('p-1', 1, { title: 'Novo título' })
+      expect(result.updated).toBe(true)
+      const call = (mockPrisma as any).presentationSlide.update.mock.calls[0][0]
+      expect(call.where.id).toBe('s-1')
+      expect(call.data.content.title).toBe('Novo título')
+      // preserved
+      expect(call.data.content.type).toBe('context')
+    })
+
+    it('updateSlideContent 404s for missing slide', async () => {
+      mockLoadLatest()
+      await expect(service.updateSlideContent('p-1', 99, { title: 'X' })).rejects.toThrow(/Slide 99/)
+    })
+
+    it('reorderSlides rejects mismatched ids', async () => {
+      mockLoadLatest()
+      await expect(service.reorderSlides('p-1', ['s-0', 's-1'])).rejects.toThrow(/must match/)
+    })
+
+    it('reorderSlides updates order for each slide', async () => {
+      mockLoadLatest()
+      await service.reorderSlides('p-1', ['s-2', 's-0', 's-1'])
+      expect((mockPrisma as any).presentationSlide.update).toHaveBeenCalledTimes(3)
+    })
+
+    it('removeSlide deletes + shifts order for subsequent slides', async () => {
+      mockLoadLatest()
+      await service.removeSlide('p-1', 1)
+      expect((mockPrisma as any).presentationSlide.delete).toHaveBeenCalledWith({ where: { id: 's-1' } })
+      expect((mockPrisma as any).presentationSlide.update).toHaveBeenCalledWith({
+        where: { id: 's-2' },
+        data: { order: 1 },
+      })
+    })
+
+    it('addSlide appends at end when afterOrder omitted', async () => {
+      mockLoadLatest()
+      await service.addSlide('p-1', 'benefits')
+      const createCall = (mockPrisma as any).presentationSlide.create.mock.calls[0][0]
+      expect(createCall.data.order).toBe(3)
+      expect(createCall.data.content.type).toBe('benefits')
+    })
+
+    it('addSlide inserts after given order + shifts later slides', async () => {
+      mockLoadLatest()
+      await service.addSlide('p-1', 'benefits', 0)
+      // All slides with order >= 1 must be updated
+      const updateCalls = (mockPrisma as any).presentationSlide.update.mock.calls
+      expect(updateCalls.length).toBeGreaterThanOrEqual(2)
+      const createCall = (mockPrisma as any).presentationSlide.create.mock.calls[0][0]
+      expect(createCall.data.order).toBe(1)
     })
   })
 })

@@ -15,6 +15,7 @@ export interface SlideContent {
     colors?: string[]
     style?: string
   }
+  visualSystem?: any
 }
 
 interface PresentationSlideCanvasProps {
@@ -42,7 +43,23 @@ export function PresentationSlideCanvas({
   editable = false,
   onContentChange,
 }: PresentationSlideCanvasProps) {
-  const colors = content.visualDirection?.colors ?? getDefaultColors(content.type)
+  const vs: any = content.visualSystem
+  const vsBg = vs?.background
+  const vsPaletteColors = vs?.palette
+    ? [vs.palette.background, vs.palette.backgroundSecondary, vs.palette.dominant].filter(Boolean)
+    : null
+  const colors = (vsPaletteColors && vsPaletteColors.length)
+    ? vsPaletteColors
+    : content.visualDirection?.colors ?? getDefaultColors(content.type)
+  const bgStyleMap: Record<string, 'gradient' | 'solid' | 'gradient-radial' | 'mesh'> = {
+    solid: 'solid',
+    'gradient-linear': 'gradient',
+    'gradient-radial': 'gradient-radial',
+    mesh: 'mesh',
+  }
+  const bgStyle = (vsBg?.type && bgStyleMap[vsBg.type]) ?? 'gradient'
+  const bgAngle = typeof vsBg?.angle === 'number' ? vsBg.angle : 135
+  const bgTexture = (vsBg?.texture as 'none' | 'noise' | 'grid' | 'dots') ?? 'none'
 
   const renderer = (name: string) =>
     renderPresentationZone(name, content, compact, editable && !compact ? onContentChange : undefined)
@@ -53,7 +70,9 @@ export function PresentationSlideCanvas({
         <CanvasRenderer
           aspectRatio={16 / 9}
           bgColors={colors}
-          bgStyle="gradient"
+          bgStyle={bgStyle}
+          bgAngle={bgAngle}
+          bgTexture={bgTexture}
           zones={zonesConfig}
           renderZone={renderer}
         />
@@ -66,7 +85,9 @@ export function PresentationSlideCanvas({
       <CanvasRenderer
         aspectRatio={16 / 9}
         bgColors={colors}
-        bgStyle="gradient"
+        bgStyle={bgStyle}
+        bgAngle={bgAngle}
+        bgTexture={bgTexture}
         zones={getDefaultSlideZones(content.type)}
         renderZone={renderer}
       />

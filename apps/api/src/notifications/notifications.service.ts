@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { EventEmitter } from 'events'
 
 export type NotificationType =
   | 'SUBMITTED_FOR_REVIEW'
@@ -9,7 +10,19 @@ export type NotificationType =
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaClient) {}
+  private readonly emitter = new EventEmitter()
+
+  constructor(private prisma: PrismaClient) {
+    this.emitter.setMaxListeners(0)
+  }
+
+  subscribe(userId: string, listener: (notif: any) => void): () => void {
+    const handler = (payload: any) => {
+      if (payload?.userId === userId) listener(payload)
+    }
+    this.emitter.on('notification', handler)
+    return () => this.emitter.off('notification', handler)
+  }
 
   async create(input: {
     userId: string
@@ -19,7 +32,9 @@ export class NotificationsService {
     title: string
     message?: string
   }) {
-    return this.prisma.notification.create({ data: input })
+    const notif = await this.prisma.notification.create({ data: input })
+    this.emitter.emit('notification', notif)
+    return notif
   }
 
   async listForUser(userId: string, opts?: { unreadOnly?: boolean; limit?: number }) {

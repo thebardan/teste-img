@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PrismaClient, User } from '@prisma/client'
 
 const SYSTEM_USER_EMAIL = 'admin@multilaser.com.br'
@@ -26,13 +26,26 @@ export class UsersService {
   }
 
   /**
-   * Resolve caller to a DB User. Falls back to system user if no email header.
-   * Used by services that need to attribute actions to the real caller.
+   * Resolve caller to a DB User.
+   * - If email provided and user exists → return that user.
+   * - If email provided but user missing → upsert as VIEWER (first login auto-provision).
+   * - If no email:
+   *   - production → throw UnauthorizedException
+   *   - dev/test → fallback to system user (keeps local workflows frictionless)
    */
   async resolveCaller(email?: string | null): Promise<User> {
     if (email) {
-      const user = await this.prisma.user.findUnique({ where: { email } })
-      if (user) return user
+      const found = await this.prisma.user.findUnique({ where: { email } })
+      if (found) return found
+      // Auto-provision first-login user with minimal name
+      return this.prisma.user.upsert({
+        where: { email },
+        create: { email, name: email.split('@')[0] },
+        update: {},
+      })
+    }
+    if (process.env.NODE_ENV === 'production') {
+      throw new UnauthorizedException('Caller identity missing (X-User-Email header)')
     }
     return this.getSystemUser()
   }

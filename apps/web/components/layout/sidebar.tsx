@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import { useUnreadCount } from '@/lib/hooks/use-notifications'
+import { useUnreadCount, useNotificationsStream } from '@/lib/hooks/use-notifications'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import {
   LayoutDashboard, Layers, Presentation, Library,
   Package, CheckSquare, Image, FileSliders, Wand2, Activity, FolderSync,
+  MessageSquareQuote,
   PanelLeftClose, PanelLeft, LogOut,
 } from 'lucide-react'
 
@@ -32,6 +33,7 @@ const navSections = [
     label: 'Admin',
     items: [
       { href: '/brand-assets', icon: Image, label: 'Brand Assets' },
+      { href: '/brand-governance', icon: MessageSquareQuote, label: 'Brand Governance' },
       { href: '/templates', icon: FileSliders, label: 'Templates' },
       { href: '/prompt-studio', icon: Wand2, label: 'Prompt Studio' },
       { href: '/approvals', icon: CheckSquare, label: 'Aprovações' },
@@ -46,6 +48,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { data: unread } = useUnreadCount()
   const unreadCount = unread?.count ?? 0
+  useNotificationsStream()
 
   return (
     <aside

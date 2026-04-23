@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { PrismaClient } from '@prisma/client'
 import { PromptEngineService } from '../prompt-engine/prompt-engine.service'
 import { BrandGovernanceService, ClientBrandProfile } from '../../brand-governance/brand-governance.service'
 
@@ -109,7 +110,51 @@ export class CopyDirectorAgent {
   constructor(
     private promptEngine: PromptEngineService,
     private brandGovernance: BrandGovernanceService,
+    private prisma: PrismaClient,
   ) {}
+
+  /**
+   * Fetch up to 3 approved sales sheets in the same category as few-shot examples.
+   * Returns formatted examples for prompt injection.
+   */
+  private async getApprovedExamples(category: string): Promise<string> {
+    try {
+      const sheets = await this.prisma.salesSheet.findMany({
+        where: {
+          status: 'APPROVED',
+          product: { category: { equals: category, mode: 'insensitive' } },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 3,
+        include: {
+          versions: { orderBy: { versionNumber: 'desc' }, take: 1 },
+        },
+      })
+      if (!sheets.length) return ''
+
+      const examples = sheets
+        .map((s, i) => {
+          const c = (s.versions[0]?.content ?? {}) as any
+          const variation = Array.isArray(c.variations) && c.variations[c.selectedVariation ?? 0]
+            ? c.variations[c.selectedVariation ?? 0].copy
+            : c
+          if (!variation?.headline) return null
+          return `Exemplo aprovado ${i + 1}:
+  Headline: "${variation.headline}"
+  Subtitle: "${variation.subtitle ?? ''}"
+  Benefits: ${Array.isArray(variation.benefits) ? variation.benefits.map((b: string) => `"${b}"`).join(', ') : '—'}
+  CTA: "${variation.cta ?? ''}"`
+        })
+        .filter(Boolean)
+      if (!examples.length) return ''
+      return `\n═══ EXEMPLOS APROVADOS (drift de identidade proibido) ═══
+Esses foram copies aprovados para a categoria ${category}. Mantenha coerência estilística, mas não copie literal.
+${examples.join('\n\n')}
+`
+    } catch {
+      return ''
+    }
+  }
 
   async generate(
     input: CopyDirectorInput,
@@ -126,6 +171,9 @@ export class CopyDirectorAgent {
     const dbCtas = await this.brandGovernance.getCtasForChannel(input.channel).catch(() => null)
     const channelCtas = dbCtas && dbCtas.length > 0 ? dbCtas : (CHANNEL_CTA[input.channel] ?? CHANNEL_CTA['Varejo'])
     const ctaExamples = channelCtas.join(' | ')
+
+    // Few-shot: approved examples same category
+    const fewShotSection = await this.getApprovedExamples(input.category)
 
     // Client brand profile constraints
     const profile = input.clientProfile
@@ -153,7 +201,7 @@ Canal de venda: ${input.channel}
 ═══ PERFIL DE TOM PARA "${input.category.toUpperCase()}" ═══
 Tom: ${toneData.tone}
 Persona de voz: ${toneData.voice}
-CTAs sugeridos para ${input.channel}: ${ctaExamples}${profileSection}
+CTAs sugeridos para ${input.channel}: ${ctaExamples}${profileSection}${fewShotSection}
 
 ═══ AS 3 ABORDAGENS OBRIGATÓRIAS ═══
 

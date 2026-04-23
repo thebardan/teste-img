@@ -14,4 +14,9 @@ export class QAController {
   checkPresentation(@Param('id') id: string) {
     return this.service.checkPresentation(id)
   }
+
+  @Post('sales-sheet/:id/art')
+  checkSalesSheetArt(@Param('id') id: string) {
+    return this.service.checkSalesSheetArt(id)
+  }
 }
