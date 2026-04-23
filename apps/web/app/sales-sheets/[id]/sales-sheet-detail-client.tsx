@@ -491,11 +491,11 @@ function ToolRail({ activeTool, onSelect }: { activeTool: ToolId | null; onSelec
     { id: 'visual',     label: 'Direção Visual',   icon: Palette },
     { id: 'layout',     label: 'Layout',           icon: Layers },
     { id: 'logo',       label: 'Logo',             icon: FileText },
-    { id: 'qa',         label: 'QA / Validação',   icon: ShieldCheck },
-    { id: 'status',     label: 'Aprovação',        icon: CheckSquare },
     { id: 'export',     label: 'Exportar',         icon: Download },
     { id: 'diff',       label: 'Diff de versões',  icon: GitCompare },
     { id: 'details',    label: 'Detalhes',         icon: Info },
+    { id: 'qa',         label: 'QA / Validação',   icon: ShieldCheck },
+    { id: 'status',     label: 'Aprovação',        icon: CheckSquare },
   ]
   return (
     <div className="flex xl:flex-col gap-1 p-1 rounded-standard bg-surface border border-border h-fit sticky top-4">

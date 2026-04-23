@@ -110,7 +110,7 @@ export function StatusActionsPanel({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+    <div className="rounded-lg bg-surface p-4 space-y-4">
       {/* Current status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
