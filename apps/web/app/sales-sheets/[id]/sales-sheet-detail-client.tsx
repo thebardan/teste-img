@@ -80,7 +80,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
   const router = useRouter()
   const [artPrompt, setArtPrompt] = useState('')
   const [showDetails, setShowDetails] = useState(false)
-  const [activeTool, setActiveTool] = useState<ToolId>('variations')
+  const [activeTool, setActiveTool] = useState<ToolId | null>(null)
 
   async function handleDelete() {
     if (!confirm('Tem certeza que deseja excluir esta lâmina?')) return
@@ -188,12 +188,16 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
       </div>
 
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[48px_1fr_340px]">
-        {/* Left: Tool Rail — Photoshop-style */}
-        <ToolRail activeTool={activeTool} onSelect={setActiveTool} />
+      <div
+        className={`grid grid-cols-1 gap-4 ${
+          activeTool ? 'xl:grid-cols-[48px_340px_1fr]' : 'xl:grid-cols-[48px_1fr]'
+        }`}
+      >
+        {/* Tool Rail */}
+        <ToolRail activeTool={activeTool} onSelect={(id) => setActiveTool(activeTool === id ? null : id)} />
 
-        {/* Center: Canvas Preview — maximized for breathing room */}
-        <div className="space-y-6">
+        {/* Canvas — grows into freed space when no panel open */}
+        <div className="space-y-6 xl:order-3">
           {/* Live Preview — minimal chrome, focused on canvas */}
           {activeContent && (activeZones || zonesConfig) && (
             <Card className="overflow-hidden">
@@ -229,8 +233,9 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
         </div>
 
-        {/* Right: Context panel — shows content for active tool */}
-        <div className="space-y-3">
+        {/* Context panel — left of canvas, hidden when no tool active */}
+        {activeTool && (
+        <div className="space-y-3 xl:order-2">
           {activeTool === 'variations' && hasVariations && (
             <Card>
               <CardHeader className="pb-3">
@@ -412,7 +417,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
               className="flex w-full items-center justify-between p-4 text-left"
               onClick={() => setShowDetails(!showDetails)}
             >
-              <span className="text-sm font-medium">Detalhes</span>
+              <CardTitle className="text-sm">Detalhes</CardTitle>
               {showDetails ? <ChevronUp className="h-4 w-4 text-fg-secondary" /> : <ChevronDown className="h-4 w-4 text-fg-secondary" />}
             </button>
             {showDetails && content && (
@@ -468,6 +473,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
           </Card>
           )}
         </div>
+        )}
       </div>
     </div>
   )
@@ -475,7 +481,7 @@ export function SalesSheetDetailClient({ id }: { id: string }) {
 
 // ─── Tool Rail (Photoshop-style icon sidebar) ─────────────────────────────────
 
-function ToolRail({ activeTool, onSelect }: { activeTool: ToolId; onSelect: (id: ToolId) => void }) {
+function ToolRail({ activeTool, onSelect }: { activeTool: ToolId | null; onSelect: (id: ToolId) => void }) {
   const tools: ToolDef[] = [
     { id: 'variations', label: 'Variações',        icon: Sparkles },
     { id: 'ai',         label: 'Ferramentas IA',   icon: Wand2 },
@@ -1125,7 +1131,7 @@ function AIToolsPanel({
       >
         <div className="flex items-center gap-2">
           <Wand2 className="h-4 w-4 text-accent" />
-          <span className="text-sm font-medium">Ferramentas IA</span>
+          <CardTitle className="text-sm">Ferramentas IA</CardTitle>
         </div>
         {open ? <ChevronUp className="h-4 w-4 text-fg-tertiary" /> : <ChevronDown className="h-4 w-4 text-fg-tertiary" />}
       </button>
@@ -1220,7 +1226,7 @@ function ImagePickerPanel({
       >
         <div className="flex items-center gap-2">
           <Image className="h-4 w-4 text-fg-secondary" />
-          <span className="text-sm font-medium">Fotos do produto</span>
+          <CardTitle className="text-sm">Fotos do produto</CardTitle>
           <span className="text-[10px] rounded-full bg-accent/10 px-1.5 py-0.5 text-accent font-semibold">
             {selectedSet.size}/{images.length}
           </span>
